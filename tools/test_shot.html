@@ -6,6 +6,8 @@ const q = new URLSearchParams(location.search), f = document.getElementById("f")
 f.style.width = q.get("w") + "px"; f.style.height = q.get("h") + "px"
 localStorage.clear()
 localStorage.setItem("jg-seen-help", "true")
+localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+if (q.get("state") === "board") localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" }))
 localStorage.setItem("jg-prof", JSON.stringify({ name: "가나다라마바사아", lines: ["자네, 이러고도 졸업할 수 있을 것 같나?"], glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }))
 localStorage.removeItem("jg-roster")
 localStorage.setItem("jg-record", JSON.stringify({ streak: 3, best: 5, wins: 7, losses: 2, plays: 9, fastest: 74.5, last: "win" }))
@@ -15,6 +17,8 @@ f.onload = async () => {
   for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
   const st = q.get("state")
   if (st === "roster") { w.__jg.show("roster"); return }
+  if (st === "college") { f.contentDocument.getElementById("b-fight").click(); return }
+  if (st === "board") { f.contentDocument.getElementById("b-board").click(); return }
   if (st === "next" || st === "pause") {
     f.contentDocument.getElementById("b-fight").click(); await wait(100)
     const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99

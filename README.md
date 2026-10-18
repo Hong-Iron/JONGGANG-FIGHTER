@@ -12,6 +12,12 @@
 
 실존 인물을 닮게 만들어도 친구끼리 웃자고만 쓰세요. 비방·모욕은 안 됩니다.
 
+## 단과대 대항 랭킹 (Supabase)
+
+SMASH와 같은 Supabase 프로젝트를 쓴다. `supabase/schema.sql`을 Supabase **SQL Editor**에 붙여 넣고 한 번 실행하면 된다(다시 실행해도 안전).
+브라우저는 공개 키로 함수 두 개만 부른다: `jg_add(p_code, p_streak)`(교수님을 이길 때마다), `jg_board()`(순위표).
+보내는 건 단과대 코드와 연승 수뿐이고, 같은 IP(날짜와 섞은 해시)에서 1분에 40번을 넘으면 버린다. 로컬 시험은 `tools/mock_supabase.py` + localStorage `jg-lb-url`.
+
 ## 구조
 
 ```

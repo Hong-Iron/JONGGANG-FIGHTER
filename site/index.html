@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="canonical" href="https://hong-iron.github.io/JONGGANG-FIGHTER/">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
-<link rel="stylesheet" href="css/style.css?v=202610190708">
+<link rel="stylesheet" href="css/style.css?v=202610190714">
 </head>
 <body>
 <div id="wrap">
@@ -35,6 +35,7 @@
         <button id="b-fight" class="btn primary">연속 대전 시작</button>
         <button id="b-roster" class="btn">교수님 목록</button>
         <button id="b-stu" class="btn">학생 꾸미기</button>
+        <button id="b-board" class="btn">단과대 랭킹</button>
         <div class="row small">
           <button id="b-sound" class="btn mini">소리 켬</button>
           <button id="b-help" class="btn mini">하는 법</button>
@@ -62,6 +63,22 @@
         <div id="stu-form" class="form"></div>
         <label class="field">학번 <input id="stu-no" inputmode="numeric" maxlength="2"></label>
         <button class="btn primary" data-go="title">완료</button>
+      </section>
+
+      <section id="s-college" class="screen">
+        <h2>내 단과대는?</h2>
+        <p class="small-note">이긴 교수님 수와 연승이 단과대 랭킹에 더해져요. 단과대 말고는 아무것도 보내지 않아요.</p>
+        <div id="college-list" class="form"></div>
+        <button id="b-college-none" class="btn mini">안 밝히고 하기</button>
+      </section>
+
+      <section id="s-board" class="screen">
+        <h2>단과대 대항 랭킹</h2>
+        <div class="row tabs"><button class="btn tab" data-tab="today">오늘</button><button class="btn tab" data-tab="total">전체</button></div>
+        <div class="row tabs"><button class="btn tab" data-sort="best">최고 연승 순</button><button class="btn tab" data-sort="wins">격파 수 순</button></div>
+        <div id="board" class="board"></div>
+        <p id="board-note" class="small-note"></p>
+        <div class="row"><button id="b-board-refresh" class="btn">새로 고침</button><button id="b-board-back" class="btn">뒤로</button></div>
       </section>
 
       <section id="s-roster" class="screen">
@@ -119,12 +136,12 @@
           <a class="btn support kakao" href="https://qr.kakaopay.com/FKcOJKyOy1f405462" target="_blank" rel="noopener">카카오페이 응원</a>
           <a class="btn support bmc" href="https://buymeacoffee.com/hongiron" target="_blank" rel="noopener">Buy Me a Coffee</a>
         </div>
-        <button class="btn mini" data-go="title">처음으로</button>
+        <div class="row small"><button id="b-board2" class="btn mini">단과대 랭킹</button><button class="btn mini" data-go="title">처음으로</button></div>
       </section>
     </div>
     <div id="toast" hidden></div>
   </div>
 </div>
-<script type="module" src="js/main.js?v=202610190708"></script>
+<script type="module" src="js/main.js?v=202610190714"></script>
 </body>
 </html>

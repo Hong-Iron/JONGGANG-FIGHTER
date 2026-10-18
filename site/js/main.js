@@ -1,10 +1,11 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190708"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190708"
-import { Battle, W, H, drawCeiling, setVibrate } from "./battle.js?v=202610190708"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190708"
-import { makeCard } from "./card.js?v=202610190708"
-import { PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190708"
+import { loadArtSource, buildArt } from "./art.js?v=202610190714"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190714"
+import { Battle, W, H, drawCeiling, setVibrate } from "./battle.js?v=202610190714"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190714"
+import { makeCard } from "./card.js?v=202610190714"
+import { lbWin, lbBoard } from "./lb.js?v=202610190714"
+import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190714"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -109,7 +110,7 @@ function later(p) { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => 
 
 // 학생 꾸미기
 optRows($("#stu-form"), STU_OPTS, () => stu, (v) => { stu = sanitizeStu(v); saveLocal("jg-stu", stu); later() },
-  { skin: "피부", jacket: "과잠 몸통", sleeve: "과잠 소매", hair: "머리", dark: "다크서클" })
+  { college: "단과대", skin: "피부", jacket: "과잠 몸통", sleeve: "과잠 소매", hair: "머리", dark: "다크서클" })
 const stuNo = $("#stu-no"); stuNo.value = stu.no
 stuNo.addEventListener("input", () => { const v = stuNo.value.replace(/[^0-9]/g, "").slice(0, 2); stuNo.value = v; if (v.length === 2) { stu = sanitizeStu({ ...stu, no: v }); saveLocal("jg-stu", stu); later() } })
 
@@ -186,6 +187,7 @@ const TOTAL = () => ({ parries: 0, perfect: 0, crits: 0, maxCombo: 0, whiffs: 0,
 let nextTimer = 0
 function startRun() {
   unlock(); if (screen === "prof") commitProfForm()
+  if (!stu.college) return askCollege(startRun)
   document.activeElement?.blur?.()                       // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   const list = active()
   run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: list[0].name }
@@ -211,6 +213,7 @@ function endFight(res) {
   if (res.result !== "win") return endRun(res.result)
   run.stage++; run.defeated.push(res.prof.name)
   record = recordWin(record, res.time, run.stage)
+  lbWin(stu.college, run.stage)                          // 단과대 랭킹에 한 명 격파 + 이번 연승
   run.sleep = Math.min(100, res.sleep + 30)                // 수면량은 30만 회복
   const next = run.list[run.stage % run.list.length]
   let n = 3
@@ -228,7 +231,76 @@ function endRun(kind) {
   $("#card").src = card.toDataURL("image/png")
   lastRes.cardCanvas = card
   setTimeout(() => { battle = null; show("result") }, 200)
+  if (run.stage && stu.college !== "none") setTimeout(async () => {   // 결과 화면에 내 단과대 순위 한 줄
+    const rows = await lbBoard(); if (!rows || screen !== "result") return
+    const r = rank(rows, "today", "best"), i = r.findIndex((x) => x.code === stu.college)
+    if (i >= 0) toast(`${cname(stu.college)} 오늘 최고 연승 ${i + 1}위 (${r[i].today_best}연승)`)
+  }, 1500)
 }
+
+// ---------------------------------------------------------------- 단과대
+const cname = (c) => (COLLEGES.find((x) => x[0] === c) || [c, c])[1]
+let afterCollege = null
+function askCollege(then) {
+  afterCollege = then
+  const box = $("#college-list"); box.innerHTML = ""
+  for (const [code, short, full] of COLLEGES) {
+    const b = document.createElement("button"); b.className = "btn college-btn"; b.textContent = `${full} (${short})`
+    b.onclick = () => setCollege(code); box.append(b)
+  }
+  show("college")
+}
+function setCollege(code) {
+  stu = sanitizeStu({ ...stu, college: code }); saveLocal("jg-stu", stu)
+  $("#stu-form").sync_college?.()
+  const f = afterCollege; afterCollege = null; f?.()
+}
+$("#b-college-none").onclick = () => setCollege("none")
+
+// 순위표: 오늘/전체 × 최고 연승 순/격파 수 순
+const board = { tab: "today", sort: "best", rows: null, at: 0, back: "title", timer: 0 }
+function rank(rows, tab, sort) {
+  const k = tab === "today" ? { best: "today_best", wins: "today_wins" } : { best: "best_ever", wins: "total_wins" }
+  const a = k[sort], b = sort === "best" ? k.wins : k.best
+  return rows.slice().sort((x, y) => (y[a] - x[a]) || (y[b] - x[b]) || (x.sort - y.sort))
+}
+async function openBoard(from) {
+  board.back = from; show("board"); drawBoard()
+  await refreshBoard()
+  clearInterval(board.timer); board.timer = setInterval(() => { if (screen === "board") refreshBoard(); else clearInterval(board.timer) }, 30000)
+}
+async function refreshBoard() {
+  $("#board-note").textContent = "불러오는 중…"
+  const rows = await lbBoard()
+  if (rows) { board.rows = rows; board.at = Date.now() }
+  drawBoard(!rows)
+}
+function drawBoard(failed) {
+  document.querySelectorAll("#s-board [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === board.tab))
+  document.querySelectorAll("#s-board [data-sort]").forEach((b) => b.classList.toggle("on", b.dataset.sort === board.sort))
+  const box = $("#board"); box.innerHTML = ""
+  const head = document.createElement("div"); head.className = "brow head"
+  for (const t of ["", "단과대", "최고", "격파", "도전"]) { const s = document.createElement("span"); s.textContent = t; s.className = t && t !== "단과대" ? "n" : ""; head.append(s) }
+  box.append(head)
+  if (!board.rows) { $("#board-note").textContent = failed ? "순위표를 불러오지 못했어요. 잠시 뒤 다시 눌러 보세요" : "불러오는 중…"; return }
+  const today = board.tab === "today"
+  rank(board.rows, board.tab, board.sort).forEach((r, i) => {
+    const row = document.createElement("div"); row.className = "brow" + (r.code === stu.college ? " mine" : "")
+    const cells = [String(i + 1), cname(r.code), `${today ? r.today_best : r.best_ever}연승`, String(today ? r.today_wins : r.total_wins), String(today ? r.today_runs : r.total_runs)]
+    cells.forEach((t, j) => { const s = document.createElement("span"); s.textContent = t; s.className = j === 0 ? "rk" : j >= 2 ? "n" : ""; row.append(s) })
+    box.append(row)
+  })
+  const mine = stu.college && stu.college !== "none" ? `내 단과대 ${cname(stu.college)} · ` : ""
+  const ago = Math.max(0, Math.round((Date.now() - board.at) / 1000))
+  $("#board-note").textContent = `${mine}${today ? "오늘(한국 시간 기준)" : "전체 기간"} · ${ago < 5 ? "방금" : ago + "초 전"} 갱신${failed ? " · 새로 고침 실패" : ""}`
+}
+document.querySelectorAll("#s-board [data-tab]").forEach((b) => (b.onclick = () => { board.tab = b.dataset.tab; drawBoard() }))
+document.querySelectorAll("#s-board [data-sort]").forEach((b) => (b.onclick = () => { board.sort = b.dataset.sort; drawBoard() }))
+$("#b-board-refresh").onclick = refreshBoard
+$("#b-board-back").onclick = () => show(board.back)
+$("#b-board").onclick = () => openBoard("title")
+$("#b-board2").onclick = () => openBoard("result")
+
 function pause() {
   if (!battle || battle.over || battle.paused) return
   battle.paused = true; show("pause")

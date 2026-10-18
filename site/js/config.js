@@ -5,7 +5,10 @@ export const PROF_OPTS = {
   outfit: [["tweed", "팔꿈치 패치 재킷"], ["hiking", "등산 자켓"], ["turtle", "올블랙 터틀넥"]],
   level: [["easy", "순한맛"], ["normal", "보통맛"], ["hard", "매운맛"]],
 }
+// 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
+export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"]]
 export const STU_OPTS = {
+  college: [...COLLEGES.map(([c, s]) => [c, s]), ["none", "안 밝힘"]],
   skin: [["dry", "카페인 푸석"], ["pale", "지박령 창백"], ["flush", "숙취 홍조"], ["tan", "실습 탄 피부"]],
   jacket: [["navy", "남색"], ["black", "검정"], ["wine", "와인"], ["green", "초록"], ["gray", "회색"]],
   sleeve: [["cream", "크림"], ["white", "흰색"], ["gray", "회색"], ["black", "검정"]],
@@ -14,7 +17,7 @@ export const STU_OPTS = {
 }
 export const DEFAULT_LINES = ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"]
 export const DEFAULT_PROF = { name: "김OO", lines: DEFAULT_LINES.slice(), glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }
-export const DEFAULT_STU = { skin: "dry", jacket: "navy", sleeve: "cream", hair: "greasy", no: "19", dark: 3 }
+export const DEFAULT_STU = { college: "", skin: "dry", jacket: "navy", sleeve: "cream", hair: "greasy", no: "19", dark: 3 }
 
 const NAME_MAX = 8, LINE_MAX = 24
 const keys = (o) => o.map((x) => x[0])
@@ -35,7 +38,7 @@ export function sanitizeProf(p) {
 export function sanitizeStu(s) {
   const out = { ...DEFAULT_STU }
   if (!s || typeof s !== "object") return out
-  for (const k of ["skin", "jacket", "sleeve", "hair"]) if (keys(STU_OPTS[k]).includes(s[k])) out[k] = s[k]
+  for (const k of ["college", "skin", "jacket", "sleeve", "hair"]) if (keys(STU_OPTS[k]).includes(s[k])) out[k] = s[k]
   const no = String(s.no ?? "").replace(/[^0-9]/g, "").slice(0, 2)
   if (no.length === 2) out.no = no
   const d = Number(s.dark); if (d >= 1 && d <= 5) out.dark = Math.round(d)

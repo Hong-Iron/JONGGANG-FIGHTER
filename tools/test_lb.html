@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 단과대 랭킹: 첫 도전 때 단과대 묻기 → 이길 때마다 jg_add(단과대, 연승) → 순위표 화면
+const log = [], f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function until(w, cond, ms = 6000) { const t0 = performance.now(); while (!cond() && performance.now() - t0 < ms) { const b = w.__jg.battle; if (b) for (let i = 0; i < 5; i++) b.update(0.02); await wait(5) } return cond() }
+const winNow = (b) => { b.intro = 0; b.attack = null; b.nextAttack = 99; b.grad = null; b.summons = 2; b.phase = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap() }
+try {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  f.src = "index.html"; await new Promise((r) => (f.onload = r)); const w = f.contentWindow, d = f.contentDocument
+  for (let i = 0; i < 600 && !(w.__jg && w.__jg.art); i++) await wait(50)
+  d.getElementById("b-fight").click(); await wait(100)
+  log.push("asked college: " + w.__jg.screen + ", buttons " + d.querySelectorAll("#college-list button").length)
+  d.querySelector("#college-list button").click(); await wait(150)
+  log.push("after pick: " + w.__jg.screen + ", saved " + JSON.parse(localStorage.getItem("jg-stu")).college)
+  winNow(w.__jg.battle); await until(w, () => w.__jg.screen === "next"); d.getElementById("b-next").click(); await wait(80)
+  winNow(w.__jg.battle); await until(w, () => w.__jg.screen === "next"); d.getElementById("b-next").click(); await wait(80)
+  w.__jg.battle.intro = 0; w.__jg.battle.finish("lose"); await until(w, () => w.__jg.screen === "result")
+  await wait(2500)
+  log.push("mock calls: " + JSON.stringify(await (await fetch("http://127.0.0.1:8767/calls")).json()))
+  log.push("queue left: " + localStorage.getItem("jg-lb-queue"))
+  log.push("toast: " + d.getElementById("toast").textContent + " hidden " + d.getElementById("toast").hidden)
+  d.getElementById("b-board2").click(); await wait(800)
+  log.push("board rows: " + [...d.querySelectorAll("#board .brow:not(.head)")].map((r) => r.textContent.replace(/\s+/g, " ")).join(" | "))
+  log.push("mine highlighted: " + d.querySelector("#board .brow.mine")?.textContent)
+  d.querySelector('#s-board [data-sort="wins"]').click(); d.querySelector('#s-board [data-tab="total"]').click()
+  log.push("total by wins: " + [...d.querySelectorAll("#board .brow:not(.head)")].slice(0, 2).map((r) => r.textContent).join(" | "))
+  log.push("note: " + d.getElementById("board-note").textContent)
+  // 다시 시작하면 단과대를 또 묻지 않는다
+  d.getElementById("b-board-back").click(); d.getElementById("b-again").click(); await wait(100)
+  log.push("second run asks again: " + (w.__jg.screen === "college"))
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>
