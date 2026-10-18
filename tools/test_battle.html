@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
+<body><canvas id="c" width="180" height="320"></canvas><pre id="out">wait</pre>
+<script type="module">
+import { loadArtSource, buildArt } from "./js/art.js"
+import { loadFonts } from "./js/text.js"
+import { Battle } from "./js/battle.js"
+import { DEFAULT_PROF, DEFAULT_STU } from "./js/config.js"
+const shots = {}, log = []
+try {
+  await Promise.all([loadFonts(), loadArtSource()])
+  const art = buildArt({ prof: DEFAULT_PROF, stu: DEFAULT_STU })
+  const ctx = document.getElementById("c").getContext("2d")
+  const b = new Battle({ art, prof: DEFAULT_PROF, stu: DEFAULT_STU, onEnd: () => {} })
+  const step = (s) => { for (let i = 0; i < Math.round(s / 0.005); i++) b.update(0.005) }
+  const shot = (name) => { b.render(ctx); shots[name] = document.getElementById("c").toDataURL() }
+  Math.random = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647 })()
+  step(0.25); shot("intro")
+  step(0.6); shot("start")
+  log.push("first attack at " + b.t.toFixed(2) + " " + (b.attack && b.attack.kind))
+  // 내려치기: 준비 → 맞는 순간 → 휘두른 뒤
+  b.attack = null; b.nextAttack = 99
+  b.stats.taps = 0; b.lastTap = -9; b.tap(); step(0.02); shot("smash_windup"); step(0.03); shot("smash_hit"); step(0.08); shot("smash_follow")
+  step(0.3); b.lastTap = -9; b.tap(); step(0.04); shot("sweep_hit")
+  step(0.3); b.combo = 8; b.comboT = b.t; b.lastTap = -9; b.tap(); step(0.04); shot("over_hit")
+  step(0.3); b.combo = 11; b.comboT = b.t; b.lastTap = -9; b.tap(); step(0.06); shot("finisher")
+  // 분필
+  step(0.5); b.anim = null; b.fx = []; b.notes = []; b.startAttack(); b.attack.kind = "chalk"; b.attack.text = "졸지 마!"; b.attack.hitAt = 0.72; step(0.55); shot("chalk")
+  b.attack = null
+  // 쪽지시험
+  b.startQuiz(); step(0.6); for (let i = 0; i < 9; i++) { b.lastTap = -9; b.tap(); step(0.05) } shot("quiz")
+  step(3); log.push("quiz done hp " + b.hp.toFixed(0) + " quizzes " + b.quizzes)
+  // 연타 리듬: 20번 빠르게 (자세가 이어지는지)
+  const poses = []
+  for (const k in shots) delete shots[k]
+  b.combo = 0; b.fx = []; b.notes = []
+  for (let i = 0; i < 20; i++) { b.lastTap = -9; b.tap(); for (let k = 0; k < 5; k++) { step(0.016); poses.push(b.anim ? b.anim.frames[b.anim.i]?.[0] || "end" : "idle"); if (i >= 2 && i < 4 || i >= 12 && i < 14) shot("r" + i + "_" + k) } }
+  log.push("poses " + poses.slice(0, 40).join(","))
+} catch (e) { log.push("ERR " + e.stack) }
+document.getElementById("out").textContent = "done"; await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log, shots }) })
+</script>

@@ -12,10 +12,24 @@ const C = {
   c: "#d8e6dc", shadow: "#6e6178", A: "#a89e8a", o: "#e8b84a",
 }
 const LV = {
-  easy: { hp: 480, tele: [1.5, 1.15], gap: [[2.6, 3.6], [2.0, 2.8]], dmg: [9, 12], gradHp: 40 },
-  normal: { hp: 600, tele: [1.25, 0.95], gap: [[2.0, 3.0], [1.5, 2.3]], dmg: [12, 16], gradHp: 55 },
-  hard: { hp: 720, tele: [1.0, 0.78], gap: [[1.5, 2.3], [1.1, 1.7]], dmg: [15, 20], gradHp: 70 },
+  easy: { hp: 420, tele: [1.35, 1.05], gap: [[1.8, 2.6], [1.4, 2.0]], dmg: [8, 11], gradHp: 35, quiz: 14 },
+  normal: { hp: 520, tele: [1.15, 0.9], gap: [[1.3, 2.0], [1.0, 1.6]], dmg: [11, 15], gradHp: 50, quiz: 18 },
+  hard: { hp: 640, tele: [0.95, 0.75], gap: [[1.0, 1.5], [0.8, 1.3]], dmg: [14, 19], gradHp: 65, quiz: 22 },
 }
+// 학생 공격 동작: [자세, 길이(초), 맞는 순간]. 빠르게 연타하면 휘두르기 준비 자세를 건너뛴다
+const MOVES = {
+  smash: [["windup", 0.035], ["smash", 0.075, true], ["follow", 0.09]],
+  sweep: [["sweepA", 0.035], ["sweepB", 0.085, true]],
+  over: [["overUp", 0.03], ["overDown", 0.06, true]],
+}
+const LUNGE = { idle: [0, 0], windup: [0, 1], smash: [2, -4], follow: [1, -2], sweepA: [1, 0], sweepB: [-1, -3], overUp: [0, 1], overDown: [0, -4] }
+// 휘두를 때 남는 잔상: 키보드 끝이 지나간 자리 (그림 원본의 자세 좌표에서 계산)
+const SMEAR = {
+  smash: [93, 184, 112, 142, 138, 166, 100, 178],
+  sweep: [118, 200, 158, 188, 4, 189, 56, 192],
+  over: [30, 168, 72, 168, 72, 186, 30, 186],
+}
+const QUIPS = ["어허!", "흠…", "그게 과제인가?", "다시!", "근거는?", "이 친구가…"]
 const PARRY_WIN = 0.3, PERFECT_WIN = 0.12
 const SKILLS = [
   { id: "wire", name: "점퍼선", cost: 35, cd: 10, x: 3 },
@@ -37,7 +51,8 @@ export class Battle {
     this.hpMax = L.hp; this.hp = L.hp; this.trail = L.hp
     this.sleep = 100; this.caff = 40; this.timeLeft = 180
     this.phase = 1; this.cine = null
-    this.attack = null; this.nextAttack = 2.2
+    this.attack = null; this.nextAttack = 0.6
+    this.intro = 1.1; this.anim = null; this.quiz = null; this.quizzes = 0
     this.parryLock = 0; this.parryPress = -9
     this.bind = 0; this.bindTick = 0; this.haste = 0; this.spec = 0
     this.cd = { wire: 0, can: 0, push: 0 }
@@ -68,7 +83,7 @@ export class Battle {
 
   tap() {
     if (this.cine || this.t - this.lastTap < 0.065) return
-    this.lastTap = this.t; this.swingT = 0.09
+    this.lastTap = this.t
     this.stats.taps++
     this.combo = this.t - this.comboT < 0.45 ? this.combo + 1 : 1; this.comboT = this.t
     this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo)
@@ -78,11 +93,30 @@ export class Battle {
     const crit = Math.random() < 0.12
     const dmg = (crit ? 6 : 2) * mult
     sfx("key")
+    // 동작 고르기: 콤보 6부터 두 손 내려찍기, 그 전에는 내려치기와 옆으로 휘두르기를 번갈아
+    const kind = this.combo >= 6 ? "over" : this.stats.taps % 2 ? "smash" : "sweep"
+    const busy = this.anim && this.anim.i < this.anim.frames.length
+    const skip = busy && kind !== "over"
+    const frames = skip ? MOVES[kind].slice(1) : MOVES[kind]
+    this.anim = { kind, frames, i: 0, t: 0 }
+    const delay = skip ? 0 : MOVES[kind][0][1]
     const tx = this.grad ? 146 : 100, ty = this.grad ? 196 : 118
-    this.damage(dmg, { x: tx + rnd(-10, 10), y: ty + rnd(-8, 8), crit })
+    const hx = tx + rnd(-10, 10), hy = ty + rnd(-8, 8)
+    this.fx.push({ type: "smear", kind, t: 0, delay, life: delay + 0.06 })
+    this.fx.push({ type: "star", x: Math.round(hx), y: Math.round(hy), big: crit, t: 0, delay, life: delay + 0.08 })
+    if (this.quiz) this.quiz.n++
+    const finisher = this.combo > 0 && this.combo % 12 === 0
+    this.damage(dmg + (finisher ? 15 : 0), { x: hx, y: hy, crit })
     for (let i = 0; i < (crit ? 3 : 1); i++) this.spawnCap(tx, ty)
-    if (crit) { this.stats.crits++; this.hitstop(0.05); this.shake(2, 0.12); sfx("crit") }
-    else this.shake(1, 0.05)
+    if (finisher) {
+      this.shake(4, 0.2); this.hitstop(0.07); sfx("stamp")
+      this.fx.push({ type: "wave", x: tx, y: ty, t: 0, life: 0.3 })
+      this.say(this.combo + "연타 보너스!", 90, 150, C.O, { font: "b11", outline: C.K, outline2: C.X })
+    }
+    if (crit) {
+      this.stats.crits++; this.hitstop(0.05); this.shake(2, 0.12); sfx("crit")
+      if (!this.grad && Math.random() < 0.3) this.say(pick(QUIPS), 120 + rnd(-10, 20), 50, C.X, { font: "s9", outline: C.K })
+    } else this.shake(1, 0.06)
   }
 
   parry() {
@@ -102,6 +136,7 @@ export class Battle {
     sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15)
     this.caff = Math.min(100, this.caff + (perfect ? 18 : 10))
     this.shatter(a)
+    if (a.kind === "chalk") this.fx.push({ type: "chalkback", t: 0, life: 0.25 })
     this.say(perfect ? "완벽한 반박!" : "반박 성공!", 145, 34, C.n6, { font: "b11", outline: C.n, outline2: C.K, rise: 1 })
     if (a.kind === "spec") this.say("스펙 변경 무효", 145, 50, C.X, { font: "s9", outline: C.K })
     this.damage(perfect ? 30 : 18, { x: 100, y: 96, crit: perfect, noGrade: true })
@@ -136,10 +171,27 @@ export class Battle {
     if (this.over) { this.overT += dt; this.updateOver(dt); return }
     if (this.cine) { this.updateCine(dt); return }
     this.timeLeft -= dt; this.hintT -= dt
+    if (this.intro > 0) { const before = this.intro; this.intro -= dt; if (before > 0.5 && this.intro <= 0.5) sfx("stamp") }
+    if (this.anim) {
+      const a = this.anim
+      a.t += dt
+      while (a.i < a.frames.length && a.t >= a.frames[a.i][1]) { a.t -= a.frames[a.i][1]; a.i++ }
+      if (a.i >= a.frames.length) this.anim = null
+    }
+    if (this.quiz) {
+      const q = this.quiz
+      q.t += dt
+      if (q.t >= q.dur && !q.done) {
+        q.done = true
+        if (q.n >= q.goal) { sfx("win"); this.say("만점!", 90, 96, C.U, { font: "l14", bold: true, outline: C.X, outline2: C.K, rise: 0 }); this.fx.push({ type: "aplus", x: 112, y: 64, t: 0, life: 0.9 }); this.damage(40, { x: 100, y: 110, noGrade: true }) }
+        else { sfx("hurt"); this.sleep = Math.max(0, this.sleep - 6); this.say("재시험… -6 수면량", 90, 96, C.X, { font: "b11", outline: C.U, outline2: C.K }) }
+      }
+      if (q.t >= q.dur + 0.5) { this.quiz = null; this.nextAttack = 0.8 }
+    }
     if (this.timeLeft <= 0) { this.timeLeft = 0; return this.finish("timeout") }
     for (const k in this.cd) this.cd[k] = Math.max(0, this.cd[k] - dt)
     this.parryLock = Math.max(0, this.parryLock - dt)
-    this.swingT = Math.max(0, this.swingT - dt); this.hurtT = Math.max(0, this.hurtT - dt); this.profHitT = Math.max(0, this.profHitT - dt)
+    this.hurtT = Math.max(0, this.hurtT - dt); this.profHitT = Math.max(0, this.profHitT - dt); this.profKnock = Math.max(0, (this.profKnock || 0) - dt)
     this.haste = Math.max(0, this.haste - dt); this.spec = Math.max(0, this.spec - dt)
     this.caff = Math.min(100, this.caff + dt * 5)
     this.trail = Math.max(this.hp, this.trail - dt * 120)
@@ -149,9 +201,9 @@ export class Battle {
       if (this.bindTick <= 0) { this.bindTick = 0.5; this.damage(4, { x: 90 + rnd(-30, 30), y: 120, noGrade: true, quiet: true }) }
     }
     if (this.grad && this.grad.enter < 1) this.grad.enter = Math.min(1, this.grad.enter + dt * 2.5)
-    // 교수님 공격
+    // 교수님 공격 (시작 연출과 쪽지시험 동안은 쉰다)
     if (this.attack) this.updateAttack(dt)
-    else if (this.bind <= 0) {
+    else if (this.bind <= 0 && this.intro <= 0 && !this.quiz) {
       this.nextAttack -= dt
       if (this.nextAttack <= 0) this.startAttack()
     }
@@ -162,11 +214,12 @@ export class Battle {
     const p2 = this.phase === 2, L = this.L
     const r = Math.random()
     let kind = "single", count = 1
-    if (p2 && r < 0.22) { kind = "barrage"; count = 3 }
-    else if (p2 && r < 0.36 && this.spec <= 0) kind = "spec"
+    if (p2 && r < 0.2) { kind = "barrage"; count = 3 }
+    else if (p2 && r < 0.34 && this.spec <= 0) kind = "spec"
+    else if (r > (p2 ? 0.8 : 0.68)) kind = "chalk"
     const lines = this.prof.lines.length ? this.prof.lines : ["질문 있나?"]
-    const text = kind === "spec" ? "과제 스펙 변경!" : kind === "barrage" ? "내 컴퓨터에선 되던데?" : pick(lines)
-    const tele = kind === "barrage" ? 0.62 : L.tele[p2 ? 1 : 0]
+    const text = kind === "spec" ? "과제 스펙 변경!" : kind === "barrage" ? "내 컴퓨터에선 되던데?" : kind === "chalk" ? "졸지 마!" : pick(lines)
+    const tele = kind === "barrage" ? 0.62 : kind === "chalk" ? 0.72 : L.tele[p2 ? 1 : 0]
     this.attack = { kind, text, count, idx: 0, e: 0, hitAt: tele, tele, done: false }
     sfx("laser")
   }
@@ -175,7 +228,7 @@ export class Battle {
     a.e += dt
     if (!a.done && a.e >= a.hitAt + 0.05) {                           // 맞았다
       a.done = true
-      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : 1)
+      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1)
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
       this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt")
       this.combo = 0
@@ -205,12 +258,14 @@ export class Battle {
       if (this.grad.hp <= 0) this.gradDown()
     }
     this.hp = Math.max(0, this.hp - n)
-    if (!quiet) this.profHitT = 0.07
+    if (!quiet) this.profKnock = 0.06
+    if (crit) this.profHitT = 0.05
     if (!noGrade) {
       if (crit) this.fx.push({ type: "aplus", x: Math.round(x + 14), y: Math.round(y - 30), t: 0, life: 0.6 })
       else if (Math.random() < 0.35) this.fx.push({ type: "text", img: textImage(pick(GRADES), { font: "b11", pen: true, color: C.R, outline: C.X }), x: Math.round(x + rnd(-6, 20)), y: Math.round(y - rnd(10, 26)), t: 0, life: 0.45, vy: -14 })
     }
     if (crit && !noGrade && Math.random() < 0.4) this.note(pick(NOTES))
+    if (!this.quiz && !this.cine && ((this.quizzes === 0 && this.hp <= this.hpMax * 0.8) || (this.quizzes === 1 && this.phase === 2 && this.hp <= this.hpMax * 0.35))) this.startQuiz()
     if (this.phase === 1 && this.hp <= this.hpMax / 2) return this.toPhase2()
     if (this.phase === 2 && this.summons < 2 && !this.grad && this.hp <= this.hpMax / 4) this.summon()
     if (this.hp <= 0) this.finish("win")
@@ -220,7 +275,14 @@ export class Battle {
     if (this.notes.length > 2) this.notes.shift()
   }
 
+  startQuiz() {
+    this.quizzes++
+    if (this.attack) this.attack = null
+    this.quiz = { t: 0, dur: 3, n: 0, goal: this.L.quiz, done: false }
+    sfx("stamp"); this.shake(2, 0.15)
+  }
   toPhase2() {
+    this.quiz = null
     this.phase = 2; this.cine = { kind: "phase", t: 0 }
     if (this.attack) { this.attack = null }
     this.bind = 0; this.nextAttack = 2.5
@@ -310,7 +372,7 @@ export class Battle {
     const p2 = this.phase === 2, ko = this.over === "win"
     const sink = ko ? Math.min(60, Math.floor(this.overT * 40)) : 0
     const bob = !ko && Math.floor(this.t * 1.6) % 2 ? 1 : 0
-    const recoil = this.profHitT > 0 ? -1 : 0
+    const recoil = this.profHitT > 0 || this.profKnock > 0 ? -2 : 0
     const pName = ko ? "prof_ko" : p2 ? "prof_p2" : "prof_idle"
     const px = ox - 1, py = oy - 1 + bob + recoil + sink
     if (p2 && !ko) {
@@ -333,20 +395,24 @@ export class Battle {
       if (this.grad.lineT > 0 && this.grad.enter >= 1 && this.grad.lineT < 2.0) this.bubble(x, this.grad.line, gx + 30, gy + 4, "s9", 2)
     }
     // 학생
-    const swing = this.swingT > 0, sName = swing ? "stu_swing" : "stu_idle"
+    const pose = this.anim && this.anim.i < this.anim.frames.length ? this.anim.frames[this.anim.i][0] : "idle"
+    const sName = "stu_" + pose, [lx, ly] = LUNGE[pose]
     const hurt = this.hurtT > 0 && this.over !== "lose" ? Math.round(Math.sin(this.t * 60) * 1) : 0
-    this.shadowDraw(x, A[sName + "_shadow"], ox + 4 + hurt, oy + 1)
-    x.drawImage(A[sName], ox - 1 + hurt, oy - 1 + (this.over === "lose" ? Math.min(40, Math.floor(this.overT * 30)) : 0))
+    this.shadowDraw(x, A[sName + "_shadow"], ox + 4 + hurt + lx, oy + 1 + ly)
+    x.drawImage(A[sName], ox - 1 + hurt + lx, oy - 1 + ly + (this.over === "lose" ? Math.min(40, Math.floor(this.overT * 30)) : 0))
+    for (const f of this.fx) if (f.type === "smear" && f.t >= f.delay) this.drawSmear(x, f, ox + lx, oy + ly)
     if (this.haste > 0) this.drawChevrons(x, ox, oy)
     // 공격 예고
     if (this.attack && !this.attack.done) this.drawTelegraph(x, ox, oy)
     if (this.beamT > 0) { x.fillStyle = C.U; this.line(x, 34 + ox, 140 + oy, 44, 189, 2) }
     // 효과
-    for (const f of this.fx) this.drawFx(x, f)
+    for (const f of this.fx) if (f.t >= (f.delay || 0)) this.drawFx(x, f)
     for (const n of this.notes) {
       const reveal = Math.min(1, n.t / 0.25)
       x.save(); x.beginPath(); x.rect(n.x, n.y, Math.ceil(n.img.width * reveal), n.img.height); x.clip(); x.drawImage(n.img, n.x, n.y); x.restore()
     }
+    if (this.quiz) this.drawQuiz(x)
+    if (this.intro > 0) this.drawIntro(x)
     if (this.cine?.kind === "phase") this.drawPhaseCine(x)
     if (this.cine?.kind === "push") this.drawPushCine(x)
     if (this.over) this.drawOver(x)
@@ -404,7 +470,63 @@ export class Battle {
       x.fillStyle = C.K; x.fillRect(145 - (w >> 1) - 1, 51 - (h >> 1) - 1, w + 2, h + 2); x.fillStyle = C.X; x.fillRect(145 - (w >> 1), 51 - (h >> 1), w, h)
     } else this.bubble(x, a.text, 132, 66)
     if (a.kind === "barrage") for (let k = 0; k < 3; k++) drawText(x, ["404", "SEGFAULT", "NULL"][(k + a.idx) % 3], 20 + k * 50, Math.round(220 - ((this.t * 60 + k * 30) % 60)), { font: "s7", color: C.N, outline: C.K })
+    if (a.kind === "chalk") {                                         // 교탁 위 손에서 학생 머리로
+      const k = Math.max(0, (a.e - (a.hitAt - 0.38)) / 0.38), cx = Math.round(122 + (44 - 122) * k), cy = Math.round(146 + (186 - 146) * k - Math.sin(k * Math.PI) * 18)
+      x.fillStyle = C.K; x.fillRect(cx - 1 + ox, cy - 1 + oy, 7, 4); x.fillStyle = C.c; x.fillRect(cx + ox, cy + oy, 5, 2); x.fillStyle = C.X; x.fillRect(cx + ox, cy + oy, 2, 1)
+      if (k > 0) { x.fillStyle = C.c; for (let i = 1; i < 4; i++) x.fillRect(cx + ox + i * 6, cy + oy - i * 2 + 1, 1, 1) }
+    }
     if (left < PARRY_WIN) drawText(x, "지금 반박!", 137, 262, { font: "s9", color: C.X, outline: C.U, align: "c" })
+  }
+  drawSmear(x, f, ox, oy) {
+    const p = SMEAR[f.kind]
+    x.fillStyle = C.X
+    const xs = [p[0], p[2], p[4], p[6]], ys = [p[1], p[3], p[5], p[7]]
+    const inside = (px, py) => {
+      let c = false
+      for (let i = 0, j = 3; i < 4; j = i++) if ((ys[i] > py) !== (ys[j] > py) && px < (xs[j] - xs[i]) * (py - ys[i]) / (ys[j] - ys[i]) + xs[i]) c = !c
+      return c
+    }
+    for (let yy = Math.min(...ys); yy <= Math.max(...ys); yy++) for (let xx = Math.min(...xs); xx <= Math.max(...xs); xx++)
+      if ((xx + yy) % 2 === 0 && inside(xx + 0.5, yy + 0.5)) x.fillRect(xx + ox, yy + oy, 1, 1)
+  }
+  drawStar(x, f) {                                                    // 각진 8각 별
+    const r1 = f.big ? 11 : 7, r2 = f.big ? 4 : 3, k = f.t - (f.delay || 0) < 0.04 ? 1 : 0.7
+    const pts = []
+    for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, r = (i % 2 ? r2 : r1) * k; pts.push([f.x + Math.cos(a) * r, f.y + Math.sin(a) * r]) }
+    this.fillPoly(x, pts.map(([px, py]) => [f.x + (px - f.x) * 1.35, f.y + (py - f.y) * 1.35]), C.K)
+    this.fillPoly(x, pts, f.big ? "#fff3a8" : C.X)
+    this.fillPoly(x, pts.map(([px, py]) => [f.x + (px - f.x) * 0.45, f.y + (py - f.y) * 0.45]), f.big ? C.O : "#fff3a8")
+  }
+  fillPoly(x, pts, col) {
+    x.fillStyle = col
+    const ys = pts.map((p) => p[1])
+    for (let yy = Math.floor(Math.min(...ys)); yy <= Math.ceil(Math.max(...ys)); yy++) {
+      const xs = []
+      for (let i = 0; i < pts.length; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]
+        if ((y0 <= yy + 0.5 && y1 > yy + 0.5) || (y1 <= yy + 0.5 && y0 > yy + 0.5)) xs.push(x0 + (yy + 0.5 - y0) * (x1 - x0) / (y1 - y0))
+      }
+      xs.sort((a, b) => a - b)
+      for (let i = 0; i + 1 < xs.length; i += 2) x.fillRect(Math.round(xs[i]), yy, Math.max(1, Math.round(xs[i + 1] - xs[i])), 1)
+    }
+  }
+  drawQuiz(x) {
+    const q = this.quiz, slide = Math.min(1, q.t / 0.18), y0 = Math.round(-60 + slide * 104)
+    x.fillStyle = C.K; x.fillRect(39, y0 - 1, 102, 52); x.fillStyle = C.p; x.fillRect(40, y0, 100, 50)
+    x.fillStyle = C.l; for (let yy = y0 + 14; yy < y0 + 48; yy += 8) x.fillRect(42, yy, 96, 1)
+    x.fillStyle = C.Q; x.fillRect(48, y0 + 1, 1, 48)
+    drawText(x, "쪽지시험!", 90, y0 + 3, { font: "b11", color: C.R, align: "c" })
+    drawText(x, q.done ? (q.n >= q.goal ? "만점" : "재시험") : "연타해서 답안 작성", 90, y0 + 17, { font: "s9", color: C.K, align: "c" })
+    const ok = q.n >= q.goal
+    drawText(x, `${Math.min(q.n, 99)} / ${q.goal}`, 90, y0 + 29, { font: "b11", color: ok ? C.n : C.K, align: "c" })
+    const left = Math.max(0, 1 - q.t / q.dur)
+    x.fillStyle = C.K; x.fillRect(50, y0 + 43, 82, 4); x.fillStyle = left < 0.3 ? C.U : C.O; x.fillRect(51, y0 + 44, Math.round(80 * left), 2)
+  }
+  drawIntro(x) {
+    const s = this.intro > 0.5 ? "출석 체크!" : "시작!"
+    const img = textImage(s, { font: "l14", bold: true, stamp: this.intro > 0.5 ? -6 : 5, color: C.U, outline: C.X, outline2: C.d7 })
+    const pop = (this.intro > 0.5 ? 1.1 - this.intro : 0.5 - this.intro) < 0.06 ? -4 : 0
+    x.drawImage(img, 90 - (img.width >> 1), 96 + pop)
   }
   drawWires(x, ox, oy) {
     const cols = [C.R, C.N, C.Z]
@@ -423,6 +545,16 @@ export class Battle {
     else if (f.type === "text" && f.img) { const X = f.center ? Math.round(f.x - f.img.width / 2) : Math.round(f.x); x.drawImage(f.img, Math.max(1, Math.min(W - f.img.width - 1, X)), Math.round(f.y)) }
     else if (f.type === "bubble") this.bubble(x, f.s, f.x, f.y + 14, "s9")
     else if (f.type === "confetti") { x.fillStyle = f.col; x.fillRect(Math.round(f.x), Math.round(f.y), 2, Math.floor(f.t * 8) % 2 ? 1 : 3) }
+    else if (f.type === "star") this.drawStar(x, f)
+    else if (f.type === "wave") {                                     // 연타 보너스: 퍼지는 마름모 테두리
+      const r = Math.round(8 + f.t * 120)
+      x.fillStyle = Math.floor(f.t * 30) % 2 ? C.O : C.X
+      for (let i = 0; i <= r; i++) { x.fillRect(f.x - r + i, f.y - i, 2, 1); x.fillRect(f.x + r - i, f.y - i, 2, 1); x.fillRect(f.x - r + i, f.y + i, 2, 1); x.fillRect(f.x + r - i, f.y + i, 2, 1) }
+    } else if (f.type === "chalkback") {
+      const k = f.t / f.life, cx = Math.round(44 + (90 - 44) * k), cy = Math.round(186 + (66 - 186) * k)
+      x.fillStyle = C.K; x.fillRect(cx - 1, cy - 1, 7, 4); x.fillStyle = C.c; x.fillRect(cx, cy, 5, 2)
+      if (k > 0.85) drawText(x, "퍽!", 104, 52, { font: "b11", color: C.X, outline: C.K })
+    }
   }
   dim(x, a) { x.fillStyle = `rgba(20,10,30,${a})`; x.fillRect(0, ARENA_TOP, W, ARENA_BOT - ARENA_TOP) }
   drawPhaseCine(x) {

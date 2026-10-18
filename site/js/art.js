@@ -7,7 +7,7 @@ export async function loadArtSource() {
 }
 
 const NAMES = [
-  "room", "prof_idle", "prof_p2", "prof_ko", "prof_arms", "lectern", "stu_idle", "stu_swing", "grad",
+  "room", "prof_idle", "prof_p2", "prof_ko", "prof_arms", "lectern", "stu_idle", "stu_windup", "stu_smash", "stu_follow", "stu_sweepA", "stu_sweepB", "stu_overUp", "stu_overDown", "grad",
   "cap_c", "cap_v", "cap_ctrl", "cap_blank", "aplus", "ic_wire", "ic_can", "ic_push",
 ]
 for (let lv = 1; lv <= 5; lv++) for (const m of ["idle", "hurt", "win"]) NAMES.push(`por_${lv}_${m}`)
@@ -36,8 +36,8 @@ export function buildArt(opt, names = NAMES) {
   new Function(...Object.keys(env), SRC)(...Object.values(env))
   const out = {}
   for (const n of names) out[n] = toCanvas(p.image(n))
-  for (const n of ["prof_idle", "prof_p2", "grad", "stu_idle", "stu_swing"]) out[n + "_white"] = silhouette(out[n], "#ffffff")
-  for (const n of ["prof_idle", "prof_p2", "prof_ko", "lectern", "stu_idle", "stu_swing", "grad"]) out[n + "_shadow"] = silhouette(out[n], "#6e6178")
+  for (const n of ["prof_idle", "prof_p2", "grad"]) out[n + "_white"] = silhouette(out[n], "#ffffff")
+  for (const n of ["prof_idle", "prof_p2", "prof_ko", "lectern", "grad", "stu_idle", "stu_windup", "stu_smash", "stu_follow", "stu_sweepA", "stu_sweepB", "stu_overUp", "stu_overDown"]) out[n + "_shadow"] = silhouette(out[n], "#6e6178")
   out.prof_arms_shadow = silhouette(out.prof_arms, "#6e6178")
   return out
 }

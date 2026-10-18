@@ -192,15 +192,43 @@ function keyboard(c, o, d, len, half) {
     c.rect(Math.round(x), Math.round(y), 3, 2, col)
   }
 }
+// 팔 한 마디: a→b 사다리꼴 (굵기 wa→wb), 그늘은 오른쪽 아래를 향한 반쪽
+function seg(c, a, b, wa, wb, col) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1
+  let nx = -dy / L, ny = dx / L
+  c.poly([a[0] + nx * wa, a[1] + ny * wa, b[0] + nx * wb, b[1] + ny * wb, b[0] - nx * wb, b[1] - ny * wb, a[0] - nx * wa, a[1] - ny * wa].map(Math.round), col)
+  if (nx * 0.6 + ny * 0.8 < 0) { nx = -nx; ny = -ny }
+  c.shade([a[0], a[1], b[0], b[1], b[0] + nx * wb, b[1] + ny * wb, a[0] + nx * wa, a[1] + ny * wa].map(Math.round))
+}
+const mid = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+function sleeveArm(c, sh, el, hd) {
+  seg(c, sh, el, 5.5, 4.6, "y"); seg(c, el, hd, 4.6, 3.6, "y")
+  seg(c, mid(el, hd, 0.78), mid(el, hd, 0.94), 3.9, 3.9, "Y")                        // 소맷부리 고무단
+  const [x, y] = hd.map(Math.round)
+  c.poly([x - 4, y - 1, x - 2, y - 4, x + 3, y - 4, x + 4, y, x + 2, y + 4, x - 3, y + 4], "I"); c.shade([x + 1, y - 4, x + 3, y - 4, x + 4, y, x + 2, y + 4, x, y + 4])
+}
+const nrm = (x, y) => { const l = Math.hypot(x, y); return [x / l, y / l] }
+// 공격 동작: R=오른팔(어깨, 팔꿈치, 손), L=왼팔(없으면 내린 팔), kb=[시작점, 방향, 길이, 반폭]
+const POSES = {
+  windup: { R: [[78, 219], [101, 203], [93, 184]], kb: [[92, 186], nrm(0.42, -0.91), 48, 8] },
+  smash: { R: [[78, 219], [94, 198], [100, 178]], kb: [[88, 172], nrm(0.99, -0.12), 50, 6] },
+  follow: { R: [[76, 218], [62, 206], [50, 200]], kb: [[54, 200], nrm(-0.93, 0.36), 44, 7] },
+  sweepA: { R: [[78, 219], [104, 210], [118, 200]], kb: [[114, 201], nrm(0.96, -0.28), 46, 7] },
+  sweepB: { R: [[76, 218], [66, 202], [56, 192]], kb: [[60, 192], nrm(-1, -0.05), 56, 6] },
+  overUp: { L: [[22, 219], [26, 196], [38, 174]], R: [[78, 219], [74, 196], [62, 174]], kb: [[30, 170], [1, 0], 42, 7] },
+  overDown: { L: [[22, 219], [24, 202], [36, 187]], R: [[78, 219], [76, 202], [64, 187]], kb: [[30, 184], [1, 0], 42, 6] },
+}
 function drawStudent(c, pose) {
-  const swing = pose === "swing"
-  if (!swing) keyboard(c, [86, 194], [0.894, -0.447], 60, 9)
+  const P = POSES[pose]
+  if (!P) keyboard(c, [86, 194], [0.894, -0.447], 60, 9)
+  else keyboard(c, ...P.kb)
   c.poly([12, 236, 16, 221, 34, 214, 66, 214, 84, 219, 92, 236], "j")
   c.shade([12, 236, 16, 221, 26, 217, 30, 236]); c.light([36, 214, 64, 214, 60, 218, 40, 218])
   c.text(39, 224, "ENG", "o"); c.hline(38, 230, 15, "o")
-  c.poly([10, 236, 14, 222, 26, 216, 24, 236], "y"); c.shade([10, 236, 14, 222, 18, 220, 16, 236])
+  if (P && P.L) sleeveArm(c, ...P.L)
+  else { c.poly([10, 236, 14, 222, 26, 216, 24, 236], "y"); c.shade([10, 236, 14, 222, 18, 220, 16, 236]) }
   const no = String(ST.no ?? "19").replace(/[^0-9]/g, "").slice(0, 2) || "19"
-  if (!swing) {
+  if (!P) {
     c.poly([76, 215, 101, 209, 103, 219, 79, 225], "y")
     c.poly([98, 216, 105, 212, 94, 195, 87, 199], "y")
     c.shade([79, 225, 103, 219, 102, 216, 80, 222]); c.shade([105, 212, 94, 195, 91, 197, 101, 214])
@@ -208,13 +236,9 @@ function drawStudent(c, pose) {
     c.text(83, 215, no, "j")
     c.poly([83, 190, 91, 188, 95, 192, 92, 198, 85, 198, 81, 194], "I"); c.shade([91, 188, 95, 192, 92, 198, 89, 198])
   } else {
-    // 내려찍기: 팔을 앞으로 뻗고, 키보드는 교수님 쪽으로 눕는다(멀어져서 작아 보임)
-    c.poly([72, 216, 92, 196, 100, 202, 82, 224], "y")
-    c.poly([92, 196, 100, 202, 104, 182, 96, 178], "y"); c.shade([100, 202, 104, 182, 101, 181, 97, 200])
-    c.poly([95, 180, 104, 176, 105, 179, 96, 183], "Y")
-    c.text(80, 207, no, "j")
-    keyboard(c, [86, 170], [0.99, -0.12], 52, 6)
-    c.poly([95, 170, 103, 168, 106, 173, 103, 178, 96, 178, 93, 174], "I")
+    sleeveArm(c, ...P.R)
+    const [tx, ty] = mid(P.R[0], P.R[1], 0.5).map(Math.round)
+    if (!P.L) c.text(tx - 4, ty - 3, no, "j")
   }
   c.rect(44, 210, 12, 6, "0"); c.rect(34, 214, 32, 4, "y"); c.hline(34, 216, 32, "j")
   c.poly([30, 198, 34, 196, 34, 208, 31, 207], "I"); c.poly([70, 198, 66, 196, 66, 208, 69, 207], "0")
@@ -235,7 +259,8 @@ function drawStudent(c, pose) {
   }
   c.shade([60, 182, 66, 189, 66, 204, 60, 213, 54, 213, 60, 196]); c.shade([34, 207, 66, 207, 60, 213, 40, 213])
 }
-for (const pose of ["idle", "swing"]) sprite("stu_" + pose, { w: 180, h: 236, outline: "K" }, (c) => drawStudent(c, pose))
+for (const pose of ["idle", ...Object.keys(POSES)]) sprite("stu_" + pose, { w: 180, h: 236, outline: "K" }, (c) => drawStudent(c, pose))
+sheet("stu_poses", ["stu_idle", ...Object.keys(POSES).map((p) => "stu_" + p)], { cols: 4, pad: 0 })
 
 // ================================================================ 학생 얼굴 초상화 (34×34): 다크서클 1~5단계 × 표정
 function drawPortrait(c, lv, mood) {
@@ -321,4 +346,4 @@ sprite("ic_push", { w: 28, h: 28 }, (c) => {
 // 미리보기용 (pxl CLI): 기본 꾸미기로 한 장면
 scene("preview", { w: 180, h: 236, bg: "k" },
   stamp("room", 0, 0), stamp("prof_arms", -1, -1), stamp("prof_p2", -1, -1), stamp("lectern", -1, -1),
-  stamp("grad", 116, 150), stamp("stu_swing", -1, -1))
+  stamp("grad", 116, 150), stamp("stu_smash", -1, -1))
