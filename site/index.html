@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>종강 파이터 | 교수님과의 사투</title>
+<meta name="description" content="과잠 입은 공대생이 청축 키보드로 교수님과 싸우는 도트 웹 게임. 교수님을 직접 만들어 링크로 친구에게 보내 보세요.">
+<meta property="og:title" content="종강 파이터 | 교수님과의 사투">
+<meta property="og:description" content="연타로 과제를 제출하고, 말풍선 공격은 타이밍 맞춰 반박하세요.">
+<meta name="theme-color" content="#2e2436">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="game" width="180" height="320"></canvas>
+    <div id="ui">
+      <section id="s-load" class="screen on"><p class="center">그림 그리는 중…</p></section>
+
+      <section id="s-title" class="screen">
+        <div class="title-gap"></div>
+        <p id="challenge" class="banner" hidden></p>
+        <button id="b-fight" class="btn primary">결투 시작</button>
+        <button id="b-prof" class="btn">교수님 만들기</button>
+        <button id="b-stu" class="btn">학생 꾸미기</button>
+        <div class="row small">
+          <button id="b-sound" class="btn mini">소리 켬</button>
+          <button id="b-help" class="btn mini">하는 법</button>
+        </div>
+        <p class="foot">실존 교수님을 닮게 만들어도 친구끼리 웃자고만 쓰세요. 비방·모욕은 안 돼요.</p>
+      </section>
+
+      <section id="s-help" class="screen">
+        <h2>하는 법</h2>
+        <ul class="help">
+          <li><b>화면 연타</b>: 과제를 제출해 교수님 체력을 깎는다 (PC: J, F)</li>
+          <li><b>말풍선</b>이 뜨고 조준 꺾쇠가 하얗게 깜빡일 때 <b>[반박!]</b> (PC: Space). 너무 일찍 누르면 잠깐 못 누른다</li>
+          <li><b>점퍼선</b>: 교수님을 3초 묶는다 · <b>원샷</b>: 5초 동안 데미지 2배 · <b>강제 푸시</b>: 카페인 100으로 큰 한 방 (PC: 1, 2, 3)</li>
+          <li>체력 50%에서 <b>2페이즈</b>. 랩장이 나오면 먼저 쓰러뜨려야 교수님에게 데미지가 제대로 들어간다</li>
+          <li>수면량이 0이 되거나 3분이 지나면 진다</li>
+        </ul>
+        <button class="btn primary" data-go="title">알겠어요</button>
+      </section>
+
+      <section id="s-stu" class="screen">
+        <h2>학생 꾸미기</h2>
+        <canvas id="stu-preview" width="120" height="70" class="pix"></canvas>
+        <div id="stu-form" class="form"></div>
+        <label class="field">학번 <input id="stu-no" inputmode="numeric" maxlength="2"></label>
+        <button class="btn primary" data-go="title">완료</button>
+      </section>
+
+      <section id="s-prof" class="screen">
+        <h2>교수님 만들기</h2>
+        <canvas id="prof-preview" width="80" height="64" class="pix"></canvas>
+        <label class="field">이름 <span class="pre">공대</span><input id="prof-name" maxlength="8"><span class="pre">교수</span></label>
+        <label class="field">말버릇 1 <input id="prof-l0" maxlength="24"></label>
+        <label class="field">말버릇 2 <input id="prof-l1" maxlength="24"></label>
+        <label class="field">말버릇 3 <input id="prof-l2" maxlength="24"></label>
+        <div id="prof-form" class="form"></div>
+        <div class="row">
+          <button id="b-link" class="btn">링크 복사</button>
+          <button id="b-prof-fight" class="btn primary">결투하기</button>
+        </div>
+        <button class="btn mini" data-go="title">뒤로</button>
+      </section>
+
+      <section id="s-battle" class="screen pass"></section>
+
+      <section id="s-result" class="screen">
+        <img id="card" alt="결과 카드">
+        <div class="row">
+          <button id="b-save" class="btn primary">이미지 저장</button>
+          <button id="b-share" class="btn">공유</button>
+        </div>
+        <div class="row">
+          <button id="b-again" class="btn">다시 하기</button>
+          <button id="b-link2" class="btn">링크 복사</button>
+        </div>
+        <button class="btn mini" data-go="title">처음으로</button>
+      </section>
+    </div>
+    <div id="toast" hidden></div>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

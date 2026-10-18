@@ -1,0 +1,43 @@
+/* 논리 화면 180×320을 정수 배율로 키운다. 둥근 모서리 없음. */
+:root { --K: #1d1622; --k: #2e2436; --p: #f4efe1; --R: #c8353b; --r: #85223a; --Q: #f39aa0; --N: #46d17f; --n: #1d6b3f; --plate: #3b4150; --plateL: #5d6578; --plateD: #22252e; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #160f1c; overflow: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, #160f1c 0 4px, #1b1322 4px 8px); }
+#stage { position: relative; width: 180px; height: 320px; transform-origin: 0 0; flex: none; }
+#game { position: absolute; inset: 0; width: 180px; height: 320px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.pix { image-rendering: pixelated; image-rendering: crisp-edges; }
+#ui { position: absolute; inset: 0; font-family: "Galmuri9", monospace; font-size: 10px; line-height: 1.2; color: var(--K); -webkit-font-smoothing: none; }
+.screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; gap: 4px; padding: 6px; overflow-y: auto; overflow-x: hidden; }
+.screen.on { display: flex; }
+.screen.pass { pointer-events: none; }
+#s-load { justify-content: center; color: #fff; }
+#s-title { justify-content: flex-end; padding-bottom: 8px; }
+#s-help, #s-stu, #s-prof, #s-result { background: var(--p); }
+.title-gap { flex: 1; }
+h2 { font-family: "Galmuri11"; font-weight: 700; font-size: 12px; margin: 2px 0; }
+.center { text-align: center; }
+.btn { font-family: "Galmuri11"; font-size: 12px; color: #fff; background: var(--plate); border: 1px solid var(--K);
+  box-shadow: inset 1px 1px 0 var(--plateL), inset -1px -1px 0 var(--plateD); padding: 3px 8px; min-width: 120px; border-radius: 0; cursor: pointer; }
+.btn:active { box-shadow: inset 1px 1px 0 var(--plateD); transform: translateY(1px); }
+.btn.primary { background: var(--R); box-shadow: inset 1px 1px 0 var(--Q), inset -1px -1px 0 var(--r); outline: 1px solid var(--N); outline-offset: 0; }
+.btn.mini { font-family: "Galmuri9"; font-size: 10px; min-width: 0; padding: 1px 6px; }
+.row { display: flex; gap: 4px; justify-content: center; width: 100%; }
+.row .btn { min-width: 0; flex: 1; }
+.row.small .btn { flex: none; }
+.row.small { width: auto; }
+.banner { background: var(--K); color: #b8ffd6; padding: 2px 4px; margin: 0; text-align: center; border: 1px solid var(--N); }
+.foot { font-family: "Galmuri7"; font-size: 8px; color: #cfc8d8; text-align: center; margin: 2px 0 0; background: rgba(29, 22, 34, 0.85); padding: 1px 3px; }
+.help { margin: 0; padding: 0 0 0 10px; display: flex; flex-direction: column; gap: 4px; }
+.form { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.opt { display: grid; grid-template-columns: 44px 14px 1fr 14px; align-items: center; gap: 2px; }
+.opt .v { text-align: center; background: #fff; border: 1px solid var(--K); padding: 1px 0; font-family: "Galmuri9"; }
+.opt button { font-family: "Galmuri9"; font-size: 10px; padding: 0; height: 14px; border: 1px solid var(--K); background: var(--plate); color: #fff; border-radius: 0; }
+.field { display: flex; align-items: center; gap: 3px; width: 100%; }
+.field input { flex: 1; min-width: 0; font-family: "Galmuri9"; font-size: 10px; border: 1px solid var(--K); border-radius: 0; padding: 1px 2px; background: #fff; color: var(--K); }
+.field .pre { font-family: "Galmuri9"; }
+#stu-preview, #prof-preview { border: 1px solid var(--K); background: #2e5442; flex: none; }
+#s-result { padding: 0 6px 4px; gap: 3px; }
+#card { width: 180px; height: 225px; margin: 0 -6px; image-rendering: pixelated; flex: none; }
+.row .btn { font-family: "Galmuri9"; font-size: 10px; padding: 2px 4px; white-space: nowrap; }
+#toast { position: absolute; left: 10px; right: 10px; bottom: 60px; background: var(--K); color: #b8ffd6; font-family: "Galmuri9"; font-size: 10px; padding: 3px 4px; text-align: center; border: 1px solid var(--N); z-index: 10; }

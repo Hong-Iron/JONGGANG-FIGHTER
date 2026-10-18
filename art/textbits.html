@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css"></head><body><pre id="out">wait</pre>
+<script>
+const T = {
+  boss: ["Galmuri11", 12, "bold", "공대 김OO 교수"],
+  phaseHud: ["Galmuri7", 8, "normal", "2페이즈 -14%"],
+  phaseNow: ["Galmuri7", 8, "normal", "2페이즈 돌입!"],
+  ask: ["Galmuri11", 12, "normal", "질문 있나?"],
+  logic: ["Galmuri11", 12, "bold", "논리적 비약"],
+  phase2: ["Galmuri14", 15, "normal", "2페이즈"],
+  angry: ["Galmuri9", 10, "normal", "학회 마감 D-1 모드"],
+  parryOk: ["Galmuri11", 12, "bold", "반박 성공!"],
+  sleep: ["Galmuri9", 10, "normal", "수면량"],
+  caff: ["Galmuri9", 10, "normal", "카페인"],
+  danger: ["Galmuri7", 8, "normal", "위험! 기절 직전"],
+  s1: ["Galmuri7", 8, "normal", "점퍼선"],
+  s2: ["Galmuri7", 8, "normal", "원샷"],
+  s3: ["Galmuri7", 8, "normal", "강제 푸시"],
+  parry: ["Galmuri14", 15, "normal", "반박!"],
+  space: ["Galmuri7", 8, "normal", "SPACE"],
+  hint: ["Galmuri7", 8, "normal", "연타 = 과제 제출"],
+  cd: ["Galmuri9", 10, "normal", "12"],
+}
+;(async () => {
+  for (const [f, sz, w] of Object.values(T)) await document.fonts.load(`${w} ${sz}px "${f}"`, "가A")
+  const res = {}
+  for (const [id, [f, sz, w, txt]] of Object.entries(T)) {
+    const c = document.createElement("canvas"); c.width = 200; c.height = sz + 8
+    const x = c.getContext("2d"); x.font = `${w} ${sz}px "${f}"`; x.textBaseline = "top"; x.fillStyle = "#000"
+    x.fillText(txt, 0, 2)
+    const W = Math.ceil(x.measureText(txt).width) + 1, d = x.getImageData(0, 0, 200, c.height).data
+    const rows = []
+    for (let y = 0; y < c.height; y++) { let r = ""; for (let i = 0; i < W; i++) r += d[(y * 200 + i) * 4 + 3] >= 128 ? "X" : "."; rows.push(r) }
+    while (rows.length && !rows[0].includes("X")) rows.shift()
+    while (rows.length && !rows[rows.length - 1].includes("X")) rows.pop()
+    res[id] = rows
+  }
+  document.getElementById("out").textContent = JSON.stringify(res)
+})()
+</script></body></html>
