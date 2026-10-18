@@ -59,10 +59,31 @@ export function decodeProf(code) {
     return sanitizeProf({ name: json.n, lines: json.l, glasses: json.g, hair: json.h, outfit: json.o, level: json.d })
   } catch { return null }
 }
-export function profLink(p) {
+export function profLink(p, streak = 0) {
   const u = new URL(location.href); u.search = ""; u.hash = ""
   u.searchParams.set("b", encodeProf(p))
+  if (streak > 0) u.searchParams.set("s", String(Math.min(999, Math.floor(streak))))
   return u.toString()
+}
+// 링크에 실린 친구의 연승 (숫자만, 0~999)
+export function decodeStreak(v) { const n = Number(String(v ?? "").replace(/[^0-9]/g, "").slice(0, 3)); return n > 0 ? n : 0 }
+
+// 전적: 이 브라우저에만 남는다
+export const EMPTY_RECORD = { streak: 0, best: 0, wins: 0, losses: 0, plays: 0, fastest: 0, last: "" }
+export function loadRecord() {
+  const r = loadLocal("jg-record", {}), out = { ...EMPTY_RECORD }
+  for (const k of ["streak", "best", "wins", "losses", "plays", "fastest"]) { const n = Number(r[k]); if (Number.isFinite(n) && n >= 0) out[k] = Math.floor(n * (k === "fastest" ? 10 : 1)) / (k === "fastest" ? 10 : 1) }
+  if (["win", "lose", "timeout"].includes(r.last)) out.last = r.last
+  return out
+}
+export function addResult(rec, res) {
+  const r = { ...rec, plays: rec.plays + 1, last: res.result }
+  if (res.result === "win") {
+    r.wins++; r.streak++; r.best = Math.max(r.best, r.streak)
+    if (!r.fastest || res.time < r.fastest) r.fastest = Math.round(res.time * 10) / 10
+  } else { r.losses++; r.streak = 0 }
+  saveLocal("jg-record", r)
+  return r
 }
 
 export function loadLocal(key, fallback) {

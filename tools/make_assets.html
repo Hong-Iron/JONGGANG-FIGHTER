@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
+<body><script type="module">
+// 아이콘(32/180/512)과 링크 썸네일(1200×630)을 게임 그림으로 만든다. 모두 정수 배로 키운다.
+import { loadArtSource, buildArt } from "./js/art.js"
+import { loadFonts, drawText, drawFit, textImage } from "./js/text.js"
+import { DEFAULT_PROF, DEFAULT_STU } from "./js/config.js"
+const out = {}
+const canvas = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d"); x.imageSmoothingEnabled = false; return [c, x] }
+const up = (src, k) => { const [c, x] = canvas(src.width * k, src.height * k); x.drawImage(src, 0, 0, c.width, c.height); return c }
+try {
+  await Promise.all([loadFonts(), loadArtSource()])
+  const A = buildArt({ prof: DEFAULT_PROF, stu: DEFAULT_STU })
+  // 아이콘: 교수님 얼굴. 512는 64칸×8, 180은 60칸×3, 32는 눈·안경 32칸
+  const face = (n, sx, sy) => {
+    const [c, x] = canvas(n, n)
+    x.fillStyle = "#2e5442"; x.fillRect(0, 0, n, n)
+    x.drawImage(A.prof_idle, sx, sy, n, n, 0, 0, n, n)
+    x.fillStyle = "#c8353b"; x.fillRect(0, 0, n, 2); x.fillRect(0, n - 2, n, 2); x.fillRect(0, 0, 2, n); x.fillRect(n - 2, 0, 2, n)
+    return c
+  }
+  out["icon-512.png"] = up(face(64, 59, 38), 8).toDataURL()
+  out["icon-180.png"] = up(face(60, 61, 40), 3).toDataURL()
+  out["icon-32.png"] = face(32, 74, 58).toDataURL()
+  // 썸네일: 200×105 칸 → 6배. 왼쪽 철판에 제목, 오른쪽에 2페이즈 교수님
+  const [c, x] = canvas(200, 105)
+  x.fillStyle = "#3b4150"; x.fillRect(0, 0, 200, 105)
+  x.fillStyle = "#5d6578"; x.fillRect(0, 0, 200, 2); x.fillStyle = "#22252e"; x.fillRect(0, 103, 200, 2)
+  for (const [rx, ry] of [[3, 4], [3, 98], [76, 4], [76, 98]]) { x.fillStyle = "#9aa2b5"; x.fillRect(rx, ry, 2, 2) }
+  const ox = 66, oy = -36
+  x.save(); x.beginPath(); x.rect(82, 2, 118, 101); x.clip()
+  x.drawImage(A.room, ox, oy)
+  x.drawImage(A.prof_arms, ox - 1, oy - 1); x.drawImage(A.prof_p2, ox - 1, oy - 1); x.drawImage(A.lectern, ox - 1, oy - 1)
+  x.drawImage(A.stu_overDown, ox - 1 + 4, oy - 1 - 36)
+  x.drawImage(A.aplus, 166, 66)
+  x.restore()
+  x.fillStyle = "#1d1622"; x.fillRect(81, 2, 1, 101)
+  const big = (t, y) => x.drawImage(textImage(t, { font: "l14", bold: true, color: "#ffffff", outline: "#c8353b", outline2: "#1d1622", shadow: "#5a1020" }), 8, y)
+  big("종강", 7); big("파이터", 25)
+  drawFit(x, "교수님과의 사투", 9, 46, 68, { font: "s9", color: "#b8ffd6" })
+  drawText(x, "교수님 만들어서", 9, 59, { font: "s7", color: "#f39aa0" }); drawText(x, "링크로 보내기", 9, 68, { font: "s7", color: "#f39aa0" })
+  const bx = 9, by = 82
+  x.fillStyle = "#1d1622"; x.fillRect(bx - 1, by - 1, 46, 21); x.fillStyle = "#c8353b"; x.fillRect(bx, by, 44, 19)
+  x.fillStyle = "#f39aa0"; x.fillRect(bx, by, 44, 1); x.fillRect(bx, by, 1, 19); x.fillStyle = "#85223a"; x.fillRect(bx, by + 18, 44, 1); x.fillRect(bx + 43, by, 1, 19)
+  drawText(x, "반박!", bx + 22, by + 3, { font: "b11", color: "#ffffff", outline: "#5a1020", align: "c" })
+  out["og.png"] = up(c, 6).toDataURL()
+} catch (e) { out.error = String(e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify(out) })
+</script>

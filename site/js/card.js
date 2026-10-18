@@ -1,5 +1,5 @@
 // 결과 카드: 180×225 픽셀로 공문서를 그리고 6배로 키워 1080×1350 이미지로 만든다.
-import { drawText, textImage, wrap } from "./text.js"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610190654"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", D7 = "#5a1020", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
@@ -15,7 +15,7 @@ export function makeCard(art, res) {
   drawText(x, "종강 파이터 공문", 6, 4, { font: "s9", color: X })
   drawText(x, "제 " + new Date().getFullYear() + "-" + String(Math.floor(res.time * 37) % 10000).padStart(4, "0") + " 호", w - 6, 5, { font: "s7", color: "#9aa2b5", align: "r" })
   const title = win ? "수강철회 승인서" : tout ? "계절학기 등록금 고지서" : "대학원 강제 입학 통지서"
-  drawText(x, title, w / 2, 21, { font: "l14", bold: true, color: K, align: "c" })
+  drawFit(x, title, w / 2, 21, w - 12, { font: "l14", bold: true, color: K, align: "c" })
   x.fillStyle = K; x.fillRect(20, 40, w - 40, 1)
   // 그림: 교수님 얼굴(쓰러짐/의기양양) + 학생 초상화
   const prof = win ? art.prof_ko : art.prof_p2 ?? art.prof_idle
@@ -23,10 +23,13 @@ export function makeCard(art, res) {
   x.fillStyle = K; boxR(x, 9, 43, 78, 68)
   const por = art[`por_${win ? 2 : 5}_${win ? "win" : "hurt"}`]
   x.fillStyle = "#c5dcf2"; x.fillRect(94, 44, 76, 66)
-  x.drawImage(por, 0, 0, 34, 34, 115, 55, 34, 34)
-  drawText(x, win ? "생존" : "기절", 132, 92, { font: "s9", color: win ? "#1d6b3f" : R, align: "c" })
+  x.drawImage(por, 0, 0, 34, 34, 115, 46, 34, 34)
+  const rec = res.record || {}
+  drawText(x, win ? "생존" : "기절", 132, 81, { font: "s9", color: win ? "#1d6b3f" : R, align: "c" })
+  if (win && rec.streak >= 1) drawText(x, `${rec.streak}연승`, 132, 92, { font: "b11", color: R, align: "c" })
+  else if (!win && rec.broke >= 2) drawText(x, `${rec.broke}연승 끝`, 132, 93, { font: "s9", color: G, align: "c" })
   x.fillStyle = K; boxR(x, 93, 43, 78, 68)
-  drawText(x, `공대 ${res.prof.name} 교수`, 48, 112, { font: "s7", color: K, align: "c" })
+  drawFit(x, `공대 ${res.prof.name} 교수`, 48, 112, 78, { font: "s7", color: K, align: "c" })
   drawText(x, "피고: 공대생 " + res.stu.no + "학번", 132, 112, { font: "s7", color: K, align: "c" })
   // 본문
   const mm = Math.floor(res.time / 60), ss = Math.floor(res.time % 60)

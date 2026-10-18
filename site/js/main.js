@@ -1,27 +1,44 @@
 // 종강 파이터: 화면 전환, 꾸미기, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js"
-import { loadFonts, drawText, textImage } from "./text.js"
-import { Battle, W, H } from "./battle.js"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js"
-import { makeCard } from "./card.js"
-import { PROF_OPTS, STU_OPTS, DEFAULT_PROF, DEFAULT_STU, sanitizeProf, sanitizeStu, decodeProf, profLink, loadLocal, saveLocal } from "./config.js"
+import { loadArtSource, buildArt } from "./art.js?v=202610190654"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190654"
+import { Battle, W, H, drawCeiling } from "./battle.js?v=202610190654"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190654"
+import { makeCard } from "./card.js?v=202610190654"
+import { PROF_OPTS, STU_OPTS, DEFAULT_PROF, DEFAULT_STU, sanitizeProf, sanitizeStu, decodeProf, decodeStreak, profLink, loadLocal, saveLocal, loadRecord, addResult } from "./config.js?v=202610190654"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
 ctx.imageSmoothingEnabled = false
 
-const linkProf = decodeProf(new URLSearchParams(location.search).get("b"))
+const QS = new URLSearchParams(location.search)
+const linkProf = decodeProf(QS.get("b")), linkStreak = linkProf ? decodeStreak(QS.get("s")) : 0
+let record = loadRecord()
 let prof = linkProf || sanitizeProf(loadLocal("jg-prof", DEFAULT_PROF))
 let stu = sanitizeStu(loadLocal("jg-stu", DEFAULT_STU))
 let art = null, battle = null, lastRes = null, screen = "load"
 
 // ---------------------------------------------------------------- 배율: 정수 배로 꽉 차게
+// 폰(세로 화면, 터치): 가로를 꽉 채우고 남는 세로만큼 논리 높이를 320~420으로 늘린다.
+// PC: 정수 배율로 또렷하게.
+let EX = 0
 function fit() {
   const vw = window.innerWidth, vh = window.innerHeight
-  let k = Math.floor(Math.min(vw / W, vh / H))
-  if (k < 1) k = Math.min(vw / W, vh / H)
-  const st = $("#stage"); st.style.transform = `scale(${k})`
-  st.style.marginRight = `${W * (k - 1)}px`; st.style.marginBottom = `${H * (k - 1)}px`
+  const phone = vw < vh && (matchMedia("(pointer: coarse)").matches || vw <= 600)
+  let k, h = H
+  if (phone) {
+    k = vw / W
+    h = Math.max(H, Math.min(420, Math.floor(vh / k)))
+    if (h * k > vh) k = vh / h
+  } else {
+    k = Math.floor(Math.min(vw / W, vh / H))
+    if (k < 1) k = Math.min(vw / W, vh / H)
+  }
+  EX = h - H
+  if (cv.height !== h) { cv.height = h; ctx.imageSmoothingEnabled = false }
+  const st = $("#stage"); st.style.height = cv.style.height = h + "px"
+  st.style.transform = `scale(${k})`
+  st.style.marginRight = `${W * (k - 1)}px`; st.style.marginBottom = `${h * (k - 1)}px`
+  if (battle) battle.setExtra(EX)
 }
 window.addEventListener("resize", fit); fit()
 
@@ -44,7 +61,11 @@ function toast(s) {
 }
 function renderTitleBanner() {
   const c = $("#challenge")
-  if (linkProf) { c.hidden = false; c.textContent = `친구가 만든 공대 ${prof.name} 교수님이 기다립니다`; $("#b-fight").textContent = "결투 수락" }
+  if (linkProf) {
+    c.hidden = false
+    c.textContent = linkStreak ? `친구가 공대 ${linkProf.name} 교수님 상대로 ${linkStreak}연승 중! 넘어 보세요` : `친구가 만든 공대 ${prof.name} 교수님이 기다립니다`
+    $("#b-fight").textContent = "결투 수락"
+  }
   else { c.hidden = true; $("#b-fight").textContent = "결투 시작" }
 }
 
@@ -104,7 +125,7 @@ async function copyText(s) {
 }
 async function copyLink() {
   onProfText()
-  const url = profLink(prof)
+  const url = profLink(prof, record.streak)
   toast((await copyText(url)) ? "결투장 링크를 복사했어요. 친구에게 보내 보세요" : url)
 }
 
@@ -114,9 +135,13 @@ function startBattle() {
   document.activeElement?.blur?.()                      // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   if (!art) rebuild()
   battle = new Battle({ art, prof, stu, onEnd: endBattle })
+  battle.setExtra(EX)
   show("battle")
 }
 function endBattle(res) {
+  const before = record.streak
+  record = addResult(record, res)
+  res.record = { ...record, broke: res.result !== "win" ? before : 0 }
   lastRes = res
   const card = makeCard(art, res)
   $("#card").src = card.toDataURL("image/png")
@@ -144,8 +169,11 @@ $("#b-save").onclick = async () => {
 }
 $("#b-share").onclick = async () => {
   const blob = await cardBlob(), file = new File([blob], "jonggang.png", { type: "image/png" })
-  const text = lastRes.result === "win" ? `공대 ${prof.name} 교수님을 이겼다. 너도 해 봐` : `공대 ${prof.name} 교수님에게 졌다… 복수해 줘`
-  const url = profLink(prof)
+  const r = lastRes.record
+  const text = lastRes.result === "win"
+    ? (r.streak >= 2 ? `공대 ${prof.name} 교수님 상대로 ${r.streak}연승 중! 내 기록 깨 봐` : `공대 ${prof.name} 교수님을 이겼다. 너도 해 봐`)
+    : (r.broke >= 2 ? `${r.broke}연승이 공대 ${prof.name} 교수님에게 끊겼다… 복수해 줘` : `공대 ${prof.name} 교수님에게 졌다… 복수해 줘`)
+  const url = profLink(prof, lastRes.result === "win" ? r.streak : 0)
   if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text, url }); return } catch { return } }
   if (navigator.share) { try { await navigator.share({ text, url }); return } catch { return } }
   toast((await copyText(text + " " + url)) ? "공유 문구와 링크를 복사했어요" : url)
@@ -154,7 +182,7 @@ $("#b-share").onclick = async () => {
 // 캔버스 입력 (전투 중)
 function logical(e) {
   const r = cv.getBoundingClientRect()
-  return [Math.floor((e.clientX - r.left) * W / r.width), Math.floor((e.clientY - r.top) * H / r.height)]
+  return [Math.floor((e.clientX - r.left) * W / r.width), Math.floor((e.clientY - r.top) * cv.height / r.height)]   // 폰에서 늘어난 높이까지
 }
 cv.addEventListener("pointerdown", (e) => { unlock(); if (battle) { e.preventDefault(); battle.pointer(...logical(e)) } })
 window.addEventListener("keydown", (e) => {
@@ -173,18 +201,30 @@ function frame(now) {
   requestAnimationFrame(frame)
 }
 function drawMenu(t) {
-  ctx.fillStyle = "#2e2436"; ctx.fillRect(0, 0, W, H)
-  ctx.drawImage(art.room, 0, 0)
+  ctx.fillStyle = "#2e2436"; ctx.fillRect(0, 0, W, cv.height)
+  ctx.drawImage(art.room, 0, 0, W, 32, 0, 0, W, 32)
+  if (EX) drawCeiling(ctx, 32, EX)
+  ctx.save(); ctx.translate(0, EX)
+  ctx.drawImage(art.room, 0, 32, W, 204, 0, 32, W, 204)
   const bob = Math.floor(t * 1.6) % 2
   ctx.drawImage(art.prof_idle, -1, -1 + bob); ctx.drawImage(art.lectern, -1, -1); ctx.drawImage(art.stu_idle, -1, -1)
-  ctx.fillStyle = "rgba(20,10,30,0.45)"; ctx.fillRect(0, 0, W, 236)
-  ctx.fillStyle = "#3b4150"; ctx.fillRect(0, 236, W, 84)
+  ctx.restore()
+  ctx.fillStyle = "rgba(20,10,30,0.45)"; ctx.fillRect(0, 0, W, 236 + EX)
+  ctx.fillStyle = "#3b4150"; ctx.fillRect(0, 236 + EX, W, 84)
+  ctx.save(); ctx.translate(0, Math.floor(EX / 2))
   if (screen === "title") {
     const logo = textImage("종강 파이터", { font: "l14", bold: true, color: "#ffffff", outline: "#c8353b", outline2: "#1d1622", shadow: "#5a1020" })
     ctx.drawImage(logo, 90 - (logo.width >> 1), 46)
     drawText(ctx, "교수님과의 사투", 90, 70, { font: "s9", color: "#b8ffd6", outline: "#1d1622", align: "c" })
     drawText(ctx, "공대 프로토타입", 90, 82, { font: "s7", color: "#f39aa0", outline: "#1d1622", align: "c" })
+    if (record.plays) {                                     // 이 브라우저에 남은 전적
+      const line1 = record.streak ? `${record.streak}연승 중` : record.last === "win" ? "연승 준비" : "연승 0"
+      drawText(ctx, line1, 90, 100, { font: "b11", color: record.streak ? "#ffe04a" : "#ffffff", outline: "#1d1622", align: "c" })
+      const fast = record.fastest ? ` · 최단 ${Math.floor(record.fastest / 60)}:${String(Math.floor(record.fastest % 60)).padStart(2, "0")}` : ""
+      drawText(ctx, `최고 ${record.best}연승 · ${record.wins}승 ${record.losses}패${fast}`, 90, 114, { font: "s7", color: "#d3dbe9", outline: "#1d1622", align: "c" })
+    }
   }
+  ctx.restore()
 }
 
 // ---------------------------------------------------------------- 시작
@@ -192,7 +232,8 @@ function drawMenu(t) {
   try {
     await Promise.all([loadFonts(), loadArtSource()])
     rebuild()
-    show("title")
+    show(loadLocal("jg-seen-help", false) || linkProf ? "title" : "help")   // 처음 온 사람은 하는 법부터
+    saveLocal("jg-seen-help", true)
     requestAnimationFrame(frame)
   } catch (e) {
     $("#s-load").innerHTML = `<p class="center">불러오지 못했어요<br>${String(e.message || e).slice(0, 80)}</p>`

@@ -1,9 +1,9 @@
 // pxl 엔진을 브라우저에서 돌려 그림 원본(art/game.px.js)을 꾸미기 선택(OPT)대로 그린다.
-import { Project } from "../vendor/pxl/core/index.js"
+import { Project } from "../vendor/pxl/core/index.js?v=202610190654"
 
 let SRC = ""
 export async function loadArtSource() {
-  SRC = await (await fetch("art/game.px.js")).text()
+  SRC = await (await fetch("art/game.px.js?v=202610190654")).text()
 }
 
 const NAMES = [

@@ -1,9 +1,18 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, textImage, wrap, width } from "./text.js"
-import { sfx } from "./sfx.js"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190654"
+import { sfx } from "./sfx.js?v=202610190654"
 
 export const W = 180, H = 320
+
+// 늘어난 천장: 각진 천장 타일과 형광등 (세로로 긴 폰 화면에서만)
+export function drawCeiling(x, top, ex, ox = 0) {
+  x.fillStyle = "#a89e8a"; x.fillRect(0, top, W, ex)
+  x.fillStyle = "#958b77"
+  for (let y = top + 13; y < top + ex; y += 14) x.fillRect(0, y, W, 1)
+  for (let i = 0; i < 6; i++) x.fillRect(((i * 32 + ox) % W + W) % W, top, 1, ex)
+  for (let y = top + 4; y + 4 < top + ex; y += 28) { x.fillStyle = "#fffbe6"; x.fillRect(30 + ox, y, 50, 3); x.fillRect(100 + ox, y, 50, 3); x.fillStyle = "#cbc4b2"; x.fillRect(30 + ox, y + 3, 50, 1); x.fillRect(100 + ox, y + 3, 50, 1) }
+}
 const ARENA_TOP = 32, ARENA_BOT = 236
 const C = {
   K: "#1d1622", k: "#2e2436", X: "#ffffff", R: "#c8353b", r: "#85223a", Q: "#f39aa0", d7: "#5a1020", U: "#ff3434",
@@ -33,9 +42,12 @@ const QUIPS = ["어허!", "흠…", "그게 과제인가?", "다시!", "근거�
 const PARRY_WIN = 0.3, PERFECT_WIN = 0.12
 const SKILLS = [
   { id: "wire", name: "점퍼선", cost: 35, cd: 10, x: 3 },
-  { id: "can", name: "원샷", cost: 0, cd: 18, x: 34 },
-  { id: "push", name: "강제 푸시", cost: 100, cd: 4, x: 65 },
+  { id: "can", name: "원샷", cost: 0, cd: 18, x: 62 },
+  { id: "push", name: "강제 푸시", cost: 100, cd: 4, x: 121 },
 ]
+const SKW = 56, SKY = 274, SKH = 43                                   // 스킬 칸 크기
+// 반박 표시: 공격 예고 중 화면 아무 데나 뜨는 빨간 도장. 떠 있는 동안 누르면 막는다
+const TW = 46, TH = 26, PERFECT_REACT = 0.35
 const GRADES = ["B0", "B+", "A0", "C+", "B0", "A0"]
 const NOTES = ["논리적 비약", "출처 불분명", "오타", "근거 부족", "재수강?"]
 const rnd = (a, b) => a + Math.random() * (b - a)
@@ -65,14 +77,36 @@ export class Battle {
     this.over = null; this.overT = 0; this.ended = false
     this.armsT = 0
     this.hintT = 6
+    this.ex = 0
   }
+  setExtra(ex) { this.ex = Math.max(0, Math.round(ex)) }
 
   // ------------------------------------------------------------ 입력
   pointer(x, y) {
     if (this.over) return
-    if (inRect(x, y, 97, 273, 81, 45)) return this.parry()
-    for (let i = 0; i < 3; i++) if (inRect(x, y, SKILLS[i].x, 277, 28, 40)) return this.skill(i)
+    if (y >= ARENA_TOP) y = Math.max(ARENA_TOP, y - this.ex)            // 늘어난 천장을 누르면 강의실 위쪽을 누른 것으로
+    const a = this.attack
+    if (a && !a.done && a.e >= a.appear) {                            // 손가락이 조금 빗나가도 잡히게 3px 여유
+      if (inRect(x, y, a.tx - 3, a.ty - 3, TW + 6, TH + 6)) return this.counter()
+      if (a.decoy && inRect(x, y, a.dx - 3, a.dy - 3, TW + 6, TH + 6)) { a.decoy = null; return this.whiff("함정!") }
+    }
+    for (let i = 0; i < 3; i++) if (inRect(x, y, SKILLS[i].x, SKY, SKW, SKH)) return this.skill(i)
     if (y >= ARENA_TOP && y < ARENA_BOT) return this.tap(x, y)
+  }
+  // 반박 표시를 눌렀다: 뜨자마자 빨리 누를수록 완벽한 반박
+  counter() {
+    const a = this.attack
+    if (this.cine || !a || a.done) return
+    this.resolveParry(a.e - a.appear <= PERFECT_REACT)
+  }
+  placeTarget(a) {
+    const spot = () => [Math.round(rnd(8, W - TW - 8)), Math.round(rnd(44, ARENA_BOT - TH - 30))]
+    ;[a.tx, a.ty] = spot()
+    a.decoy = null
+    if (this.phase === 2 && Math.random() < 0.3) {                    // 2페이즈: 회색 '재수강' 함정이 같이 뜬다
+      for (let k = 0; k < 12; k++) { const [x, y] = spot(); if (Math.abs(x - a.tx) > TW + 6 || Math.abs(y - a.ty) > TH + 8) { a.decoy = true; a.dx = x; a.dy = y; break } }
+    }
+    a.appear = Math.max(0.12, a.hitAt * 0.28)
   }
   key(k) {
     if (this.over) return
@@ -127,7 +161,11 @@ export class Battle {
     if (!a || a.done) return this.whiff("헛반박!")                   // 공격이 없을 때
     const left = a.hitAt - a.e
     if (left > PARRY_WIN) return this.whiff("너무 일찍!")            // 반박할 때가 아직 아닐 때
-    const perfect = left <= PERFECT_WIN
+    this.resolveParry(left <= PERFECT_WIN)
+  }
+  resolveParry(perfect) {
+    const a = this.attack
+    this.parryPress = this.t
     a.done = true; a.parried = true
     this.stats.parries++; if (perfect) this.stats.perfect++
     sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15)
@@ -228,6 +266,7 @@ export class Battle {
     const text = kind === "spec" ? "과제 스펙 변경!" : kind === "barrage" ? "내 컴퓨터에선 되던데?" : kind === "chalk" ? "졸지 마!" : pick(lines)
     const tele = kind === "barrage" ? 0.62 : kind === "chalk" ? 0.72 : L.tele[p2 ? 1 : 0]
     this.attack = { kind, text, count, idx: 0, e: 0, hitAt: tele, tele, done: false }
+    this.placeTarget(this.attack)
     sfx("laser")
   }
   updateAttack(dt) {
@@ -250,6 +289,7 @@ export class Battle {
     const a = this.attack
     if (a && a.kind === "barrage" && a.idx + 1 < a.count && !(this.bind > 0)) {
       a.idx++; a.e = 0; a.done = false; a.parried = false; a.text = pick(["404 Not Found", "Segmentation fault", "되던데?", "다시 해봐"])
+      this.placeTarget(a)
       sfx("laser"); return
     }
     this.attack = null
@@ -370,10 +410,12 @@ export class Battle {
   render(x) {
     const A = this.art
     x.imageSmoothingEnabled = false
-    x.fillStyle = C.k; x.fillRect(0, 0, W, H)
+    const CH = x.canvas.height
+    x.fillStyle = C.k; x.fillRect(0, 0, W, CH)
     const sh = this.shakeT > 0 ? [Math.round(rnd(-1, 1) * this.shakeMag), Math.round(rnd(-1, 1) * this.shakeMag * 0.6)] : [0, 0]
     const [ox, oy] = sh
-    x.save(); x.beginPath(); x.rect(0, ARENA_TOP, W, ARENA_BOT - ARENA_TOP); x.clip()
+    if (this.ex) drawCeiling(x, ARENA_TOP, this.ex, ox)
+    x.save(); x.translate(0, this.ex); x.beginPath(); x.rect(0, ARENA_TOP, W, ARENA_BOT - ARENA_TOP); x.clip()
     x.drawImage(A.room, ox, oy)
     // 교수님
     const p2 = this.phase === 2, ko = this.over === "win"
@@ -425,7 +467,7 @@ export class Battle {
     if (this.over) this.drawOver(x)
     x.restore()
     this.drawHUD(x)
-    if (this.flash) { x.fillStyle = this.flash.color; for (let i = 0; i < 3; i++) { x.fillRect(i, i, W - i * 2, 1); x.fillRect(i, H - 1 - i, W - i * 2, 1); x.fillRect(i, i, 1, H - i * 2); x.fillRect(W - 1 - i, i, 1, H - i * 2) } }
+    if (this.flash) { x.fillStyle = this.flash.color; for (let i = 0; i < 3; i++) { x.fillRect(i, i, W - i * 2, 1); x.fillRect(i, CH - 1 - i, W - i * 2, 1); x.fillRect(i, i, 1, CH - i * 2); x.fillRect(W - 1 - i, i, 1, CH - i * 2) } }
   }
 
   shadowDraw(x, img, X, Y) { x.save(); x.globalCompositeOperation = "multiply"; x.drawImage(img, X, Y); x.restore() }
@@ -452,9 +494,9 @@ export class Battle {
   bubble(x, s, cx, tailY, font = "m11", maxLines = 2) {
     const lines = width(s, font) <= 150 ? [s] : wrap(s, font === "m11" ? "s9" : font, 150, maxLines)
     const f = lines.length > 1 && font === "m11" ? "s9" : font
-    const lh = f === "s9" ? 11 : f === "s7" ? 9 : 13
+    const lh = textImage("가", { font: f }).height + 1                // 실제 글자 높이로 줄 간격
     const w = Math.max(...lines.map((l) => width(l, f))) + 8, h = lines.length * lh + 5
-    const x0 = Math.max(2, Math.min(W - 2 - w, Math.round(cx - w / 2))), y0 = Math.round(tailY - h - 6)
+    const x0 = Math.max(2, Math.min(W - 2 - w, Math.round(cx - w / 2))), y0 = Math.max(ARENA_TOP + 2, Math.round(tailY - h - 6))   // 위로 넘치면 강의실 안쪽으로
     x.fillStyle = C.K; x.fillRect(x0 - 1, y0 - 1, w + 2, h + 2); x.fillStyle = C.X; x.fillRect(x0, y0, w, h)
     const tx = Math.max(x0 + 4, Math.min(x0 + w - 8, cx))
     x.fillStyle = C.X; for (let i = 0; i < 5; i++) x.fillRect(tx + i, y0 + h + i, 6 - i, 1)
@@ -482,7 +524,24 @@ export class Battle {
       x.fillStyle = C.K; x.fillRect(cx - 1 + ox, cy - 1 + oy, 7, 4); x.fillStyle = C.c; x.fillRect(cx + ox, cy + oy, 5, 2); x.fillStyle = C.X; x.fillRect(cx + ox, cy + oy, 2, 1)
       if (k > 0) { x.fillStyle = C.c; for (let i = 1; i < 4; i++) x.fillRect(cx + ox + i * 6, cy + oy - i * 2 + 1, 1, 1) }
     }
-    if (left < PARRY_WIN) drawText(x, "지금 반박!", 137, 262, { font: "s9", color: C.X, outline: C.U, align: "c" })
+    if (a.e >= a.appear) {
+      const age = a.e - a.appear, span = a.hitAt - a.appear, rest = Math.max(0, 1 - age / span)
+      const pop = age < 0.04 ? 3 : age < 0.08 ? -1 : 0
+      if (a.decoy) this.drawTarget(x, a.dx, a.dy, rest, pop, true)
+      this.drawTarget(x, a.tx, a.ty, rest, pop, false, rest < 0.3 && Math.floor(this.t * 16) % 2)
+    }
+  }
+  drawTarget(x, X, Y, rest, pop, decoy, blink) {
+    const w = TW + pop * 2, h = TH + pop, x0 = X - pop, y0 = Y - pop
+    x.fillStyle = C.K; x.fillRect(x0 - 1, y0 - 1, w + 2, h + 2)
+    x.fillStyle = decoy ? C.M : blink ? C.X : C.R; x.fillRect(x0, y0, w, h)
+    x.fillStyle = decoy ? "#6b6e80" : C.Q; x.fillRect(x0, y0, w, 1); x.fillRect(x0, y0, 1, h)
+    x.fillStyle = decoy ? C.m : C.r; x.fillRect(x0, y0 + h - 1, w, 1); x.fillRect(x0 + w - 1, y0, 1, h)
+    this.box(x, x0 + 2, y0 + 2, w - 4, h - 7, decoy ? "#9aa2b5" : C.Q)
+    const label = textImage(decoy ? "재수강" : "반박!", { font: "b11", color: decoy ? "#cfd3dd" : blink ? C.R : C.X, outline: decoy ? C.m : C.d7 })
+    x.drawImage(label, x0 + ((w - label.width) >> 1), y0 + 2 + ((h - 7 - label.height) >> 1))   // 글자 높이를 재서 가운데
+    x.fillStyle = C.K; x.fillRect(x0 + 2, y0 + h - 4, w - 4, 2)                        // 남은 시간 막대
+    x.fillStyle = decoy ? "#9aa2b5" : rest < 0.3 ? C.U : C.N; x.fillRect(x0 + 2, y0 + h - 4, Math.round((w - 4) * (decoy ? 1 : rest)), 2)
   }
   drawSmear(x, f, ox, oy) {
     const p = SMEAR[f.kind]
@@ -594,7 +653,7 @@ export class Battle {
     x.fillStyle = C.plate; x.fillRect(0, 0, W, 32)
     x.fillStyle = C.plateL; x.fillRect(0, 0, W, 2); x.fillStyle = C.plateD; x.fillRect(0, 30, W, 2)
     for (const [rx, ry] of [[2, 3], [176, 3], [2, 27], [176, 27]]) { x.fillStyle = C.rivet; x.fillRect(rx, ry, 2, 2); x.fillStyle = C.plateD; x.fillRect(rx + 1, ry + 1, 1, 1) }
-    drawText(x, `공대 ${this.prof.name} 교수`, 6, 3, { font: "b11", color: C.X, shadow: C.plateD })
+    drawFit(x, `공대 ${this.prof.name} 교수`, 6, 3, 90, { font: "b11", color: C.X, shadow: C.plateD })   // 이름이 길면 작은 글꼴, 그래도 길면 말줄임
     if (this.phase === 1) drawText(x, `2페이즈 -${Math.max(0, Math.round((this.hp / this.hpMax - 0.5) * 100))}%`, 151, 5, { font: "s7", color: C.Q, align: "r" })
     else drawText(x, "학회 마감 D-1", 151, 5, { font: "s7", color: Math.floor(t * 4) % 2 ? C.U : C.Q, align: "r" })
     x.fillStyle = C.plateD; x.fillRect(5, 16, 146, 11); x.fillStyle = C.K; x.fillRect(6, 17, 144, 9); x.fillStyle = C.m; x.fillRect(7, 18, 142, 7)
@@ -604,6 +663,7 @@ export class Battle {
     x.fillStyle = C.p; x.fillRect(155, 4, 21, 24); x.fillStyle = C.K; x.fillRect(154, 3, 23, 1); x.fillRect(154, 28, 23, 1); x.fillRect(154, 3, 1, 26); x.fillRect(176, 3, 1, 26)
     const sec = Math.ceil(this.timeLeft), mm = Math.floor(sec / 60), ss = String(sec % 60).padStart(2, "0")
     drawText(x, `${mm}:${ss}`, 166, 10, { font: "s7", color: this.timeLeft < 20 && Math.floor(t * 4) % 2 ? C.U : C.K, align: "c" })
+    x.save(); x.translate(0, this.ex)
     // 아래쪽 줄 노트
     x.fillStyle = C.p; x.fillRect(0, 236, W, 84); x.fillStyle = C.K; x.fillRect(0, 236, W, 1)
     x.fillStyle = C.l; for (let y = 246; y < 320; y += 9) x.fillRect(0, y, W, 1)
@@ -619,26 +679,23 @@ export class Battle {
     if (danger) drawText(x, "위험! 기절 직전", 112, 242, { font: "s7", color: blink ? C.X : C.Q, outline: C.d7 })
     drawText(x, "카페인", 42, 257, { font: "s9", color: C.K })
     this.gauge(x, 75, 256, this.caff / 100, C.O, C.y)
-    // 스킬
+    // 스킬: 넓은 칸 세 개
     SKILLS.forEach((s, i) => {
-      const img = A[["ic_wire", "ic_can", "ic_push"][i]]
-      x.drawImage(img, s.x, 277)
-      const cd = this.cd[s.id], lack = this.caff < s.cost
-      if (cd > 0 || lack) { this.dither(x, s.x + 1, 278, 26, 26, C.K, 0.5); if (cd > 0) drawText(x, String(Math.ceil(cd)), s.x + 14, 285, { font: "s9", color: C.X, outline: C.K, align: "c" }) }
-      else if (s.id === "push" && Math.floor(t * 4) % 2) this.box(x, s.x - 1, 276, 30, 30, C.N)
-      drawText(x, s.name, s.x + 14, 308, { font: "s7", color: cd > 0 || lack ? C.A : C.K, align: "c" })
+      const img = A[["ic_wire", "ic_can", "ic_push"][i]], cd = this.cd[s.id], lack = this.caff < s.cost
+      x.fillStyle = C.K; x.fillRect(s.x, SKY, SKW, SKH); x.fillStyle = C.plate; x.fillRect(s.x + 1, SKY + 1, SKW - 2, SKH - 2)
+      x.fillStyle = C.plateL; x.fillRect(s.x + 1, SKY + 1, SKW - 2, 1); x.fillStyle = C.plateD; x.fillRect(s.x + 1, SKY + SKH - 2, SKW - 2, 1)
+      x.drawImage(img, s.x + 14, SKY + 3)
+      drawText(x, s.name, s.x + SKW / 2, SKY + 32, { font: "s7", color: cd > 0 || lack ? "#9aa2b5" : C.X, align: "c" })
+      if (cd > 0 || lack) {
+        this.dither(x, s.x + 1, SKY + 1, SKW - 2, SKH - 2, C.K, 0.5)
+        if (cd > 0) drawText(x, String(Math.ceil(cd)), s.x + SKW / 2, SKY + 11, { font: "b11", color: C.X, outline: C.K, align: "c" })
+        else if (s.cost) drawText(x, "카페인 " + s.cost, s.x + SKW / 2, SKY + 13, { font: "s7", color: C.O, outline: C.K, align: "c" })
+      } else if (s.id === "push" && Math.floor(t * 4) % 2) this.box(x, s.x - 1, SKY - 1, SKW + 2, SKH + 2, C.N)
+      drawText(x, String(i + 1), s.x + 3, SKY + 2, { font: "s7", color: "#9aa2b5" })
     })
-    // 반박 버튼
-    const down = this.t - this.parryPress < 0.12, dy = down ? 2 : 0, ready = this.attack && !this.attack.done && this.attack.hitAt - this.attack.e < PARRY_WIN
-    x.fillStyle = C.n; x.fillRect(97, 273, 81, 45)
-    this.box(x, 98, 274, 79, 43, down || (ready && Math.floor(t * 16) % 2) ? C.X : C.N); this.box(x, 99, 275, 77, 41, down ? C.n6 : C.N)
-    x.fillStyle = C.d7; x.fillRect(100, 276 + dy, 75, 39 - dy); x.fillStyle = this.parryLock > 0 ? C.r : C.R; x.fillRect(100, 276 + dy, 75, 36 - dy)
-    if (!down) { x.fillStyle = C.Q; x.fillRect(100, 276, 75, 2); x.fillRect(100, 276, 1, 36) }
-    x.fillStyle = C.r; x.fillRect(100, 311, 75, 1); x.fillRect(174, 276 + dy, 1, 36 - dy)
-    drawText(x, "반박!", 137, 282 + dy, { font: "l14", bold: true, color: C.X, outline: C.d7, align: "c" })
-    drawText(x, "SPACE", 137, 302 + dy, { font: "s7", color: C.Q, align: "c" })
-    if (this.hintT > 0) { const img = textImage("화면 연타 = 과제 제출", { font: "s7", color: C.X }); x.fillStyle = C.K; x.fillRect(176 - img.width - 4, 224, img.width + 4, 10); x.drawImage(img, 176 - img.width - 2, 226) }
+    if (this.hintT > 0) { const img = textImage("연타 = 과제 제출 · 빨간 반박! 터치 = 막기", { font: "s7", color: C.X }); x.fillStyle = C.K; x.fillRect(176 - img.width - 4, 224, img.width + 4, 10); x.drawImage(img, 176 - img.width - 2, 226) }
     if (this.spec > 0) drawText(x, `스펙 변경 ${Math.ceil(this.spec)}초`, 6, 225, { font: "s7", color: C.N, outline: C.K })
+    x.restore()
     if (this.combo >= 5) drawText(x, `${this.combo} 콤보`, 6, 34 + 2, { font: "b11", color: C.O, outline: C.K })
   }
   gauge(x, X, Y, f, col, hi) {

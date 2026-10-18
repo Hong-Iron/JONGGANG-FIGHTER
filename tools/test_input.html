@@ -1,48 +1,44 @@
 <!doctype html><meta charset="utf-8"><body style="margin:0">
-<iframe id="f" src="index.html" style="width:400px;height:700px;border:0"></iframe>
+<iframe id="f" src="index.html" style="width:390px;height:844px;border:0"></iframe>
 <script>
+// 실제 클릭처럼 좌표 아래 요소에 이벤트를 보내 반박 표시·함정·연타·스킬을 확인한다 (폰 크기, 늘어난 천장 포함)
 const log = []
+localStorage.clear(); localStorage.setItem("jg-seen-help", "true")
 const f = document.getElementById("f")
 f.onload = async () => {
-  const w = f.contentWindow, d = f.contentDocument
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
-  for (let i = 0; i < 60 && !(w.__jg && w.__jg.art); i++) await wait(100)
-  // 실제처럼: 좌표 아래에 있는 요소에 이벤트를 보낸다
-  const at = (lx, ly) => { const r = d.getElementById("game").getBoundingClientRect(); return [r.left + (lx + 0.5) * r.width / 180, r.top + (ly + 0.5) * r.height / 320] }
-  const press = (lx, ly) => {
-    const [x, y] = at(lx, ly), el = d.elementFromPoint(x, y)
-    el.dispatchEvent(new w.PointerEvent("pointerdown", { clientX: x, clientY: y, bubbles: true, cancelable: true }))
-    return el.id || el.tagName
-  }
-  const click = (sel) => { const el = d.querySelector(sel), r = el.getBoundingClientRect(), t = d.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); t.focus(); t.click(); return t.id }
-  log.push("start btn hit: " + click("#b-fight"))
-  await wait(300)
-  const b = w.__jg.battle
-  log.push("battle: " + !!b)
-  b.nextAttack = 99; b.intro = 0
-  const before = b.stats.taps
-  log.push("arena target: " + press(90, 120))
-  await wait(120); press(90, 120); await wait(120); press(60, 200)
-  log.push("taps by click: " + (b.stats.taps - before))
-  // 키보드 J, 그리고 포커스 남은 버튼에 Enter
-  w.dispatchEvent(new w.KeyboardEvent("keydown", { key: "j" })); await wait(100)
-  log.push("taps after J: " + (b.stats.taps - before))
-  const ev = new w.KeyboardEvent("keydown", { key: "Enter", cancelable: true }); w.dispatchEvent(ev)
-  log.push("Enter prevented: " + ev.defaultPrevented + ", same battle: " + (w.__jg.battle === b) + ", focus: " + (d.activeElement && d.activeElement.tagName))
-  // 공격이 없을 때 반박 버튼 클릭 → 헛반박
-  const s0 = b.sleep
-  log.push("parry target: " + press(137, 295))
-  log.push("whiff: sleep " + s0 + " -> " + b.sleep + ", whiffs " + b.stats.whiffs)
-  press(137, 295)
-  log.push("during lock: sleep " + b.sleep + " (no double penalty)")
-  // 너무 일찍: 공격 시작 직후
-  await wait(500); b.startAttack(); b.attack.hitAt = 5; const s1 = b.sleep
-  press(137, 295); log.push("early: sleep " + s1 + " -> " + b.sleep)
-  // 제때: 맞기 직전
-  await wait(500); b.parryLock = 0; b.startAttack(); b.attack.hitAt = b.attack.e + 0.1; const s2 = b.sleep, p0 = b.stats.parries
-  press(137, 295); log.push("on time: parries +" + (b.stats.parries - p0) + ", sleep " + s2 + " -> " + b.sleep)
-  // 스킬 칸 클릭
-  b.caff = 100; b.cd.can = 0; press(48, 290); log.push("skill can haste: " + b.haste.toFixed(1))
+  const w = f.contentWindow, d = f.contentDocument, wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+  const cv = d.getElementById("game")
+  const at = (lx, ly) => { const r = cv.getBoundingClientRect(); return [r.left + (lx + 0.5) * r.width / 180, r.top + (ly + 0.5) * r.height / cv.height] }
+  const press = (lx, ly) => { const [x, y] = at(lx, ly), el = d.elementFromPoint(x, y); el.dispatchEvent(new w.PointerEvent("pointerdown", { clientX: x, clientY: y, bubbles: true, cancelable: true })); return el.id || el.tagName }
+  try {
+    d.getElementById("b-fight").click(); await wait(200)
+    const b = w.__jg.battle, ex = b.ex
+    log.push("canvas h " + cv.height + ", ex " + ex)
+    b.intro = 0; b.nextAttack = 99
+    const t0 = b.stats.taps; press(90, 120 + ex); await wait(100); press(90, 40); await wait(100)
+    log.push("arena taps (incl. ceiling): " + (b.stats.taps - t0))
+    // 반박 표시를 눌러 막기
+    b.startAttack(); b.attack.hitAt = 5; b.attack.e = b.attack.appear + 0.1
+    const a = b.attack, p0 = b.stats.parries, pf0 = b.stats.perfect
+    log.push("attack: tx " + a.tx + " ty " + a.ty + " appear " + a.appear.toFixed(2) + " e " + a.e.toFixed(2) + " done " + a.done + " cine " + JSON.stringify(b.cine) + " over " + b.over)
+    log.push("main.js has cv.height mapping: " + (await (await fetch("js/main.js", { cache: "no-store" })).text()).includes("cv.height / r.height"))
+    const r0 = cv.getBoundingClientRect(); log.push("rect " + JSON.stringify([r0.width, r0.height]) + " cv " + cv.width + "x" + cv.height)
+    log.push("target hit: " + press(a.tx + 20, a.ty + 10 + ex) + ", parries +" + (b.stats.parries - p0) + ", perfect +" + (b.stats.perfect - pf0))
+    if (!(b.stats.parries - p0)) { b.attack = a; a.done = false; b.pointer(a.tx + 20, a.ty + 10 + ex); log.push("direct pointer parries +" + (b.stats.parries - p0)) }
+    // 표시가 아닌 곳을 누르면 그냥 연타 (반박 안 됨)
+    await wait(200); b.startAttack(); b.attack.hitAt = 5; b.attack.e = b.attack.appear + 0.5
+    const a2 = b.attack, tx = (a2.tx > 90 ? 20 : 150), p1 = b.stats.parries, taps1 = b.stats.taps
+    press(tx, 200 + ex); log.push("miss target: parries +" + (b.stats.parries - p1) + ", taps +" + (b.stats.taps - taps1) + ", attack still on " + !b.attack.done)
+    // 함정 누르기 → 수면량 감소
+    b.attack.decoy = true; b.attack.dx = a2.tx > 90 ? 10 : 120; b.attack.dy = 60
+    const s0 = b.sleep; press(b.attack.dx + 20, b.attack.dy + 10 + ex)
+    log.push("decoy: sleep " + s0 + " -> " + b.sleep + ", decoy gone " + !b.attack.decoy)
+    // 스킬 칸 (넓어진 칸)
+    b.caff = 100; b.cd.can = 0; press(90, 290 + ex); log.push("skill 2 haste " + b.haste.toFixed(1))
+    // Space 반박: 공격 없을 때 → 감소
+    b.attack = null; b.parryLock = 0; const s1 = b.sleep; w.dispatchEvent(new w.KeyboardEvent("keydown", { key: " " })); log.push("space whiff: " + s1 + " -> " + b.sleep)
+  } catch (e) { log.push("ERR " + e.stack) }
   await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
 }
 </script>

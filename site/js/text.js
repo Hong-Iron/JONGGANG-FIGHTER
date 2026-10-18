@@ -9,34 +9,67 @@ export async function loadFonts() {
   await Promise.all(Object.values(FONTS).map(([f, s, w]) => document.fonts.load(`${w} ${s}px "${f}"`, "가A1")))
 }
 
-const scratch = document.createElement("canvas"); scratch.width = 512; scratch.height = 32
+const SW = 640, SH = 64, BASE = 16                      // 넉넉한 판에 찍고, 실제 잉크 줄을 찾아 자른다
+const scratch = document.createElement("canvas"); scratch.width = SW; scratch.height = SH
 const sx = scratch.getContext("2d", { willReadFrequently: true })
+
+function ink(str, font) {
+  const [f, size, weight] = FONTS[font]
+  sx.clearRect(0, 0, SW, SH); sx.font = `${weight} ${size}px "${f}"`; sx.textBaseline = "top"; sx.fillStyle = "#000"
+  sx.fillText(str, 2, BASE)
+  const W = Math.min(SW, Math.ceil(sx.measureText(str).width) + 12)   // 굵은 글씨가 오른쪽으로 삐져나와도 잡히게
+  return { d: sx.getImageData(0, 0, W, SH).data, W }
+}
+// 글꼴마다 위·아래 줄을 한 번 정한다: 받침·윗획이 가장 긴 글자들로 재서, 모든 글자가 같은 줄 높이를 쓴다
+const bandCache = new Map()
+function band(font) {
+  if (bandCache.has(font)) return bandCache.get(font)
+  const { d, W } = ink("종강 파이터 반박! 뷁쀍 gjpqy ÁÉ|()[]", font)
+  let top = SH, bot = -1
+  for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] >= 128) { if (y < top) top = y; if (y > bot) bot = y }
+  const b = top <= bot ? [Math.max(0, top - 1), Math.min(SH - 1, bot + 1)] : [BASE, BASE + FONTS[font][1]]
+  bandCache.set(font, b)
+  return b
+}
 
 // 글자 → {w, h, m: Uint8Array}
 const maskCache = new Map()
 export function mask(str, font = "m11") {
   const key = font + "|" + str
   if (maskCache.has(key)) return maskCache.get(key)
-  const [f, size, weight] = FONTS[font]
-  sx.clearRect(0, 0, 512, 32); sx.font = `${weight} ${size}px "${f}"`; sx.textBaseline = "top"; sx.fillStyle = "#000"
-  sx.fillText(str, 0, 4)
-  const W = Math.min(512, Math.ceil(sx.measureText(str).width) + 2), d = sx.getImageData(0, 0, W, 32).data
-  let y0 = 32, y1 = -1
-  const full = new Uint8Array(W * 32)
-  for (let y = 0; y < 32; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] >= 128) { full[y * W + x] = 1; y0 = Math.min(y0, y); y1 = Math.max(y1, y) }
-  // 글자 높이는 글꼴마다 고정(빈 줄 포함)이라 줄 맞춤이 흔들리지 않게 4줄 아래부터 size만큼 자른다
-  const top = 4, H = size
-  const m = new Uint8Array(W * H)
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m[y * W + x] = full[(y + top) * W + x]
-  let w = 0
-  for (let x = W - 1; x >= 0; x--) { let any = 0; for (let y = 0; y < H; y++) any |= m[y * W + x]; if (any) { w = x + 1; break } }
-  const out = { w: Math.max(1, w), h: H, m: cropW(m, W, H, Math.max(1, w)) }
+  const [top, bot] = band(font), { d, W } = ink(str, font)
+  let t = top, b = bot
+  for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] >= 128) { if (y < t) t = y; if (y > b) b = y }  // 기준보다 더 나간 글자도 안 자른다
+  const H = b - t + 1
+  let x0 = W, x1 = -1
+  for (let y = t; y <= b; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x }
+  if (x1 < 0) { x0 = 2; x1 = 2 }
+  x0 = Math.min(x0, 2)                                    // 앞쪽 빈칸은 글꼴 그대로 둔다 (정렬이 흔들리지 않게)
+  const w = x1 - x0 + 1, m = new Uint8Array(w * H)
+  for (let y = 0; y < H; y++) for (let x = 0; x < w; x++) m[y * w + x] = d[((y + t) * W + x + x0) * 4 + 3] >= 128 ? 1 : 0
+  const out = { w, h: H, m }
   maskCache.set(key, out)
   return out
 }
 function cropW(m, W, H, w) { const o = new Uint8Array(w * H); for (let y = 0; y < H; y++) for (let x = 0; x < w; x++) o[y * w + x] = m[y * W + x]; return o }
 
 export function width(str, font = "m11") { return str ? mask(str, font).w : 0 }
+
+// maxW 안에 들어가는 글꼴과 글자를 고른다: [글자, 글꼴]
+const SMALLER = { l14: "b11", b11: "s9", m11: "s9", s9: "s7", s7: null }
+export function fit(str, font, maxW, extra = 0) {
+  let f = font
+  while (f) { if (width(str, f) + extra <= maxW) return [str, f]; if (!SMALLER[f]) break; f = SMALLER[f] }
+  f = f || "s7"
+  let s = str
+  while (s.length > 1 && width(s + "…", f) + extra > maxW) s = s.slice(0, -1)
+  return [s + "…", f]
+}
+export function drawFit(ctx, str, x, y, maxW, opts = {}) {
+  const extra = (opts.outline ? 2 : 0) + (opts.outline2 ? 2 : 0) + (opts.bold ? 1 : 0)
+  const [s, f] = fit(str, opts.font || "m11", maxW, extra)
+  return drawText(ctx, s, x, y, { ...opts, font: f })
+}
 
 // 마스크 변형
 function grow(mk, n) {                                  // 사방으로 n칸 키운 마스크 (외곽선용)

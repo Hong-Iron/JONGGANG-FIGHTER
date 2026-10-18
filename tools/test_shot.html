@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#000">
+<iframe id="f" style="border:0;display:block"></iframe>
+<script>
+// ?w=390&h=844&state=title|battle|result : 그 크기의 화면을 iframe으로 띄우고 원하는 장면에서 멈춘다
+const q = new URLSearchParams(location.search), f = document.getElementById("f")
+f.style.width = q.get("w") + "px"; f.style.height = q.get("h") + "px"
+localStorage.clear()
+localStorage.setItem("jg-seen-help", "true")
+localStorage.setItem("jg-prof", JSON.stringify({ name: "가나다라마바사아", lines: ["자네, 이러고도 졸업할 수 있을 것 같나?"], glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }))
+localStorage.setItem("jg-record", JSON.stringify({ streak: 3, best: 5, wins: 7, losses: 2, plays: 9, fastest: 74.5, last: "win" }))
+f.src = "index.html"
+f.onload = async () => {
+  const w = f.contentWindow, wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+  const st = q.get("state")
+  if (st === "battle" || st === "result") {
+    w.__jg.startBattle(); const b = w.__jg.battle
+    b.intro = 0; b.nextAttack = 99; b.phase = 2; b.armsT = 1
+    for (let i = 0; i < 10; i++) { b.lastTap = -9; b.t += 0.1; b.tap() }
+    b.startAttack(); b.attack.kind = "single"; b.attack.text = "자네, 이러고도 졸업할 수 있을 것 같나?"; b.attack.hitAt = 9; b.attack.decoy = true; b.attack.dx = 20; b.attack.dy = 150
+    b.attack.e = b.attack.appear + 0.3
+    if (st === "battle") { b.ended = true; return }
+    b.attack = null; b.grad = null; b.summons = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap()
+    for (let i = 0; i < 300 && w.__jg.battle; i++) { b.update(0.02); await wait(1) }
+  }
+}
+</script>
