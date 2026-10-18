@@ -1,18 +1,19 @@
-import { PARTS } from "./parts.js?v=202610190747"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190808"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
-export const PROF_OPTS = {
-  glasses: [["half", "코끝 반무테"], ["tint", "변색렌즈"], ["horn", "두꺼운 뿔테"]],
-  hair: [["bald", "대머리 + 흰 옆머리"], ["pomade", "2:8 포마드"], ["white", "부스스한 백발"]],
-  outfit: [["tweed", "팔꿈치 패치 재킷"], ["hiking", "등산 자켓"], ["turtle", "올블랙 터틀넥"]],
-  level: [["easy", "순한맛"], ["normal", "보통맛"], ["hard", "매운맛"]],
-}
+export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
 export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"]]
 export const STU_OPTS = PARTS                             // 묶음과 스탯은 parts.js
 export const DEFAULT_LINES = ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"]
-export const DEFAULT_PROF = { name: "김OO", lines: DEFAULT_LINES.slice(), glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }
+export const DEFAULT_PROF = {
+  name: "김OO", lines: DEFAULT_LINES.slice(), college: "eng", level: "normal", grad: "shield", gender: "m", age: "middle", skin: "base", eyes: "normal", body: "normal", face: "smirk", beard: "none",
+  hair: "bald", hcolor: "gray", glasses: "half", hat: "none", outfit: "tweed", neck: "auto", pocket: "pens", hand: "laser", desk: "thinkpad",
+}
+// 교수님 부르는 이름: "인문대 박OO 교수"
+const CSHORT = { eng: "공대", hum: "인문대", soc: "사회대", sci: "자연대", art: "예대" }
+export const profTitle = (p) => `${CSHORT[p.college] || "공대"} ${p.name} 교수`
 export const DEFAULT_STU = {
-  college: "", skin: "dry", eyes: "tired", dark: 3, red: "no", mouth: "none", hair: "greasy", hstate: "none",
+  college: "", gender: "m", skin: "dry", eyeshape: "normal", eyes: "tired", dark: 3, red: "no", mouth: "none", hair: "greasy", hstate: "none",
   top: "jamba", print: "college", printText: "", jacket: "navy", sleeve: "cream", head: "none", neck: "none", wrist: "none", back: "none", weapon: "keyboard", pet: "none", no: "19",
 }
 
@@ -29,8 +30,13 @@ export function sanitizeProf(p) {
   out.name = clean(p.name, NAME_MAX) || DEFAULT_PROF.name
   const lines = Array.isArray(p.lines) ? p.lines.slice(0, 3).map((l) => clean(l, LINE_MAX)).filter(Boolean) : []
   out.lines = lines.length ? lines : DEFAULT_LINES.slice()
-  for (const k of ["glasses", "hair", "outfit", "level"]) if (keys(PROF_OPTS[k]).includes(p[k])) out[k] = p[k]
-  return out
+  for (const k of PROF_KEYS) if (keys(PROF_OPTS[k]).includes(p[k])) out[k] = p[k]
+  return fitGender("prof", out)
+}
+// 성별을 바꾸면 그 성별에 없는 머리(·수염)는 첫 선택지로 바꾼다
+function fitGender(kind, o) {
+  for (const k of ["hair", "beard"]) { const a = allowedFor(kind, k, o); if (a && !a.includes(o[k])) o[k] = a[0] }
+  return o
 }
 export function sanitizeStu(s) {
   const out = { ...DEFAULT_STU }
@@ -40,14 +46,17 @@ export function sanitizeStu(s) {
   const no = String(s.no ?? "").replace(/[^0-9]/g, "").slice(0, 2)
   if (no.length === 2) out.no = no
   const d = Number(s.dark); if (d >= 1 && d <= 5) out.dark = Math.round(d)
-  return out
+  return fitGender("stu", out)
 }
 
 // 처음 받는 교수님 목록 (차례로 싸운다)
+// 단과대마다 어울리는 교수님 (처음 목록 3명 + 추가할 때 차례로)
 export const PRESETS = [
-  { name: "김OO", lines: ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"], glasses: "half", hair: "bald", outfit: "tweed", level: "normal" },
-  { name: "박OO", lines: ["이 정도는 다들 하는데?", "제출 기한은 어제였네", "질문은 수업 끝나고"], glasses: "tint", hair: "pomade", outfit: "hiking", level: "normal" },
-  { name: "최OO", lines: ["이게 최선인가?", "다시 생각해 오게", "근거가 뭐지?"], glasses: "horn", hair: "white", outfit: "turtle", level: "normal" },
+  { name: "김OO", college: "eng", lines: ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"], glasses: "half", hair: "bald", outfit: "tweed", hand: "laser", desk: "thinkpad" },
+  { name: "박OO", college: "soc", age: "young", eyes: "sharp", lines: ["이 정도는 다들 하는데?", "제출 기한은 어제였네", "질문은 수업 끝나고"], glasses: "tint", hair: "pomade", hcolor: "black", outfit: "suit", neck: "nametag", hand: "mic", desk: "ipad", body: "big" },
+  { name: "최OO", college: "art", lines: ["이게 최선인가?", "다시 생각해 오게", "크리틱 시작하지"], gender: "f", age: "young", eyes: "sharp", glasses: "horn", hair: "bob", hcolor: "black", outfit: "turtle", neck: "scarf", hand: "espresso", hat: "beret", face: "stone" },
+  { name: "이OO", college: "hum", age: "senior", eyes: "droopy", lines: ["자네, 원문은 읽었나?", "그 해석은 틀렸네", "레포트는 30장이네"], glasses: "chain", hair: "side", outfit: "cardigan", hand: "chalk", desk: "thermos", face: "kind", beard: "full", body: "thin" },
+  { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },
 ]
 export const ROSTER_MAX = 6
 export function sanitizeRoster(list) {
@@ -67,8 +76,14 @@ function fromB64(code, max) {
   const bin = atob(b64 + "===".slice((b64.length + 3) % 4))
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))))
 }
-const compact = (p) => { const s = sanitizeProf(p); return { n: s.name, l: s.lines, g: s.glasses, h: s.hair, o: s.outfit, d: s.level } }
-const expand = (j) => sanitizeProf({ name: j?.n, lines: j?.l, glasses: j?.g, hair: j?.h, outfit: j?.o, level: j?.d })
+// 링크: 선택지는 번호 배열 x로 짧게. 옛 링크(g,h,o,d)도 읽는다
+const compact = (p) => { const s = sanitizeProf(p); return { n: s.name, l: s.lines, x: PROF_KEYS.map((k) => Math.max(0, keys(PROF_OPTS[k]).indexOf(s[k]))) } }
+const expand = (j) => {
+  const p = { name: j?.n, lines: j?.l }
+  if (Array.isArray(j?.x)) PROF_KEYS.forEach((k, i) => { const v = PROF_OPTS[k][j.x[i]]; if (v) p[k] = v[0] })
+  else Object.assign(p, { glasses: j?.g, hair: j?.h, outfit: j?.o, level: j?.d })
+  return sanitizeProf(p)
+}
 
 export function encodeProf(p) { return toB64({ ...compact(p), v: 1 }) }
 export function decodeProf(code) { try { const j = fromB64(code, 2000); return j ? expand(j) : null } catch { return null } }

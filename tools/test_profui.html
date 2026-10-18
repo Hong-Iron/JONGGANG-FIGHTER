@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 교수님·학생 꾸미기 화면(성별 바꾸면 머리 목록이 바뀌는지, 수염 줄 숨김), 랩장 세 종류, 이름 앞 단과대
+const log = [], shots = {}, f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot(extra = {}) {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, JSON.stringify(v))
+  for (let tries = 0; tries < 4; tries++) {
+    f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow; for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+    log.push("retry boot")
+  }
+  throw new Error("boot failed")
+}
+const rowOf = (doc, form, label) => [...doc.querySelectorAll(form + " .opt")].find((r) => r.firstChild.textContent === label)
+try {
+  let w = await boot(); const d = w.document
+  w.__jg.editProf(0); await wait(300)
+  const gender = rowOf(d, "#prof-form", "성별"), hair = rowOf(d, "#prof-form", "머리"), beard = rowOf(d, "#prof-form", "수염")
+  log.push("groups: " + [...d.querySelectorAll("#prof-form .grp")].map((g) => g.textContent).join("/"))
+  log.push("before: " + gender.querySelector(".v").textContent + " / " + hair.querySelector(".v").textContent + " / beard shown " + (beard.style.display !== "none"))
+  gender.querySelectorAll("button")[1].click(); await wait(200)
+  log.push("after f: " + gender.querySelector(".v").textContent + " / " + hair.querySelector(".v").textContent + " / beard shown " + (beard.style.display !== "none") + " / roster hair " + w.__jg.roster[0].hair)
+  const seen = new Set(); for (let i = 0; i < 9; i++) { seen.add(w.__jg.roster[0].hair); hair.querySelectorAll("button")[1].click() }
+  log.push("f hair cycle: " + [...seen].join(","))
+  const coll = rowOf(d, "#prof-form", "단과대"); coll.querySelectorAll("button")[1].click(); await wait(400)
+  log.push("prefix: " + d.getElementById("prof-pre").textContent)
+  shots.prof = await new Promise((r) => w.requestAnimationFrame(() => r(null)))
+  // 학생 화면
+  w.__jg.show("stu"); await wait(200)
+  const sg = rowOf(d, "#stu-form", "성별"), sh = rowOf(d, "#stu-form", "모양")
+  log.push("stu before: " + sh.querySelector(".v").textContent)
+  sg.querySelectorAll("button")[1].click(); await wait(100)
+  log.push("stu after f: " + sg.querySelector(".v").textContent + " / " + sh.querySelector(".v").textContent)
+  // 랩장 세 종류
+  for (const grad of ["shield", "attack", "heal"]) {
+    w = await boot({ "jg-roster": [{ name: "한OO", college: "soc", grad, gender: "f", hair: "bob", age: "young" }], "jg-stu": { college: "eng" } })
+    w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+    const b = w.__jg.battle; b.intro = 0; b.nextAttack = 999; b.phase = 2; b.quizzes = 2; b.hp = b.hpMax * 0.3; b.summon(); b.grad.enter = 1
+    const hp0 = b.hp, sl0 = b.sleep, gh0 = b.grad.hp
+    b.damage(10, { x: 90, y: 100, noGrade: true })
+    const took = hp0 - b.hp; const hp1 = b.hp
+    for (let i = 0; i < 130; i++) b.update(0.05)                       // 6.5초
+    log.push(`${grad}: prof took ${took.toFixed(1)} of 10, grad hp ${gh0}->${b.grad?.hp.toFixed(1)}, sleep ${sl0}->${b.sleep.toFixed(0)}, prof hp after 6.5s ${(b.hp - hp1).toFixed(1)}, title ${w.__jg.run && w.__jg.run.last}`)
+  }
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

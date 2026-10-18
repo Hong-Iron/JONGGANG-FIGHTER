@@ -26,14 +26,16 @@ const S = (o) => o
 export const PART_GROUPS = [
   ["몸과 얼굴", [
     ["college", "단과대", [["eng", "공대"], ["hum", "인문대"], ["soc", "사회대"], ["sci", "자연대"], ["art", "예대"], ["none", "안 밝힘"]]],
+    ["gender", "성별", [["m", "남학생"], ["f", "여학생"]]],
     ["skin", "피부", [["dry", "카페인 푸석"], ["pale", "지박령 창백"], ["flush", "숙취 홍조"], ["tan", "실습 탄 피부"]]],
-    ["eyes", "눈", [["tired", "반쯤 감긴 눈"], ["dead", "초점 없는 동태눈"], ["crazy", "광기의 벼락치기 눈"], ["calc", "학점 계산기 눈"], ["tears", "눈물 고인 눈"]]],
+    ["eyeshape", "눈매", [["normal", "보통"], ["sharp", "날카로운 눈매"], ["droopy", "처진 눈매"], ["big", "큰 눈"]]],
+    ["eyes", "눈 상태", [["tired", "반쯤 감긴 눈"], ["dead", "초점 없는 동태눈"], ["crazy", "광기의 벼락치기 눈"], ["calc", "학점 계산기 눈"], ["tears", "눈물 고인 눈"]]],
     ["dark", "다크서클", [[1, "1단계"], [2, "2단계"], [3, "3단계"], [4, "4단계"], [5, "5단계 (판다)"]]],
     ["red", "충혈", [["no", "없음"], ["yes", "실핏줄 터짐", S({ luck: 1 })]]],
     ["mouth", "입", [["none", "그대로"], ["chinmask", "턱스크"], ["mask", "검은 마스크", S({ mental: 1 })], ["gasmask", "방독면", S({ mental: 2 })], ["patch", "구내염 패치"], ["pen", "입에 문 펜", S({ speed: 1 })], ["bar", "에너지바", S({ caff: 2 })], ["nose", "코피 휴지"]]],
   ]],
   ["머리", [
-    ["hair", "모양", [["greasy", "3일 안 감은 머리"], ["buzz", "전역 밤톨"], ["pudding", "푸딩 탈색모"], ["bun", "연필 꽂은 똥머리", S({ speed: 1 })], ["capmark", "모자 자국 눌린 머리"]]],
+    ["hair", "모양", [["greasy", "3일 안 감은 머리"], ["buzz", "전역 밤톨"], ["pudding", "푸딩 탈색모"], ["bun", "연필 꽂은 똥머리", S({ speed: 1 })], ["capmark", "모자 자국 눌린 머리"], ["twoblock", "투블럭"], ["long", "긴 생머리"], ["ponytail", "질끈 묶은 포니테일", S({ speed: 1 })], ["bob", "단발"], ["clip", "집게핀 올림머리", S({ mental: 1 })]]],
     ["hstate", "상태", [["none", "그대로"], ["static", "정전기 뻗침"], ["gray", "스트레스성 새치", S({ mental: 1 })]]],
   ]],
   ["옷", [
@@ -80,3 +82,49 @@ export function statsOf(stu) {
   for (const s of sets) for (const [k, v] of Object.entries(s.fx)) { if (k === "mental") st.mental += v; else if (k === "drain") fx.drain += v; else fx[k] *= v }
   return { ...st, sets, fx }
 }
+
+// ================================================================ 교수님 꾸미기
+// [키, 이름, 선택지]. 그림은 art/game.px.js의 drawProf가 같은 코드로 그린다.
+export const PROF_GROUPS = [
+  ["기본", [
+    ["college", "단과대", [["eng", "공대: 모니터 기계팔"], ["hum", "인문대: 철학자 환영"], ["soc", "사회대: 속보 자막"], ["sci", "자연대: 자기장 폭주"], ["art", "예대: 추상화 그림자"]]],
+    ["level", "난이도", [["easy", "순한맛"], ["normal", "보통맛"], ["hard", "매운맛"]]],
+    ["grad", "랩장", [["shield", "방어형 박사 6년차"], ["attack", "공격형 석사 1기 (감점)"], ["heal", "힐러형 행정조교 (회복)"]]],
+  ]],
+  ["얼굴", [
+    ["gender", "성별", [["m", "남자 교수님"], ["f", "여자 교수님"]]],
+    ["age", "나이대", [["young", "30대 신임"], ["middle", "50대 정교수"], ["senior", "60대 정년 직전"]]],
+    ["skin", "피부", [["base", "보통"], ["pale", "연구실 창백"], ["red", "불그레"], ["tan", "등산으로 탄"]]],
+    ["body", "체형", [["normal", "보스형"], ["thin", "학자형 (마른 거북목)"], ["big", "야전사령관형 (풍채)"]]],
+    ["face", "표정", [["smirk", "한쪽 눈썹 치켜뜸"], ["kind", "인자한 미소 (학점은 C+)"], ["stone", "무표정"], ["tired", "마감에 지친 얼굴"]]],
+    ["eyes", "눈매", [["normal", "보통"], ["sharp", "날카로운 눈매"], ["big", "큰 눈"], ["droopy", "처진 눈매"], ["narrow", "실눈"]]],
+    ["beard", "수염", [["none", "없음"], ["mustache", "콧수염"], ["goatee", "염소수염"], ["full", "덥수룩 수염"], ["stubble", "까슬한 수염"]]],
+  ]],
+  ["머리와 안경", [
+    ["hair", "머리", [["bald", "대머리 + 옆머리"], ["pomade", "2:8 포마드"], ["white", "부스스"], ["side", "단정한 가르마"], ["back", "올백"], ["perm", "곱슬 파마"], ["long", "장발 묶음"], ["shaved", "반짝 민머리"], ["bob", "단발"], ["short", "숏컷"], ["updo", "올림머리"], ["straight", "긴 생머리"], ["ponytail", "포니테일"]]],
+    ["hcolor", "머리색", [["gray", "흰머리"], ["salt", "반백"], ["black", "검정"], ["brown", "갈색"]]],
+    ["glasses", "안경", [["half", "코끝 반무테"], ["tint", "변색렌즈"], ["horn", "두꺼운 뿔테"], ["metal", "얇은 금속테"], ["forehead", "이마에 올린 안경"], ["chain", "돋보기 + 안경줄"], ["none", "안경 없음"]]],
+    ["hat", "모자", [["none", "없음"], ["beret", "베레모"], ["cap", "등산 모자"], ["grad", "학사모"]]],
+  ]],
+  ["옷", [
+    ["outfit", "옷", [["tweed", "팔꿈치 패치 재킷"], ["hiking", "등산 자켓"], ["turtle", "올블랙 터틀넥"], ["suit", "학회 정장"], ["vest", "조끼 스웨터"], ["labcoat", "실험 가운"], ["shortsleeve", "한겨울 반팔 셔츠"], ["cardigan", "한여름 두꺼운 가디건"]]],
+    ["neck", "목", [["auto", "옷에 맞게"], ["redtie", "빨간 넥타이"], ["bluetie", "파란 넥타이"], ["bowtie", "나비넥타이"], ["scarf", "스카프"], ["nametag", "학회 네임택"], ["none", "없음"]]],
+    ["pocket", "가슴주머니", [["pens", "3색 볼펜"], ["card", "명함"], ["none", "없음"]]],
+  ]],
+  ["손과 교탁", [
+    ["hand", "손에 든 것", [["laser", "레이저 포인터"], ["stick", "늘어나는 지시봉"], ["chalk", "분필"], ["espresso", "에스프레소 잔"], ["mic", "인터뷰 마이크"], ["pad", "결재판"]]],
+    ["desk", "교탁 위", [["thinkpad", "낡은 ThinkPad"], ["ipad", "아이패드 + 펜슬"], ["thermos", "보이차 보온병"], ["molecule", "분자 구조 모형"], ["books", "포스트잇 원서 더미"]]],
+  ]],
+]
+export const PROF_PARTS = Object.fromEntries(PROF_GROUPS.flatMap(([, rows]) => rows.map(([k, , list]) => [k, list])))
+export const PROF_KEYS = Object.keys(PROF_PARTS)
+
+// 성별에 맞는 선택지: 키마다 성별별로 보이는 코드 목록. 없으면 전부 보인다
+export const BY_GENDER = {
+  stu: { hair: { m: ["greasy", "buzz", "twoblock", "pudding", "bun", "capmark"], f: ["long", "ponytail", "bob", "clip", "greasy", "pudding", "bun", "capmark"] } },
+  prof: {
+    hair: { m: ["bald", "pomade", "white", "side", "back", "perm", "long", "shaved"], f: ["bob", "short", "updo", "straight", "ponytail", "perm", "white"] },
+    beard: { f: ["none"] },
+  },
+}
+export const allowedFor = (kind, key, obj) => BY_GENDER[kind]?.[key]?.[obj?.gender || "m"] || null

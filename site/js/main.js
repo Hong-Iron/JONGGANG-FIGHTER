@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190747"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190747"
-import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190747"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190747"
-import { makeCard } from "./card.js?v=202610190747"
-import { PART_GROUPS, WEAPON, SETS, statsOf } from "./parts.js?v=202610190747"
-import { lbWin, lbBoard } from "./lb.js?v=202610190747"
-import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190747"
+import { loadArtSource, buildArt } from "./art.js?v=202610190808"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190808"
+import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190808"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190808"
+import { makeCard } from "./card.js?v=202610190808"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190808"
+import { lbWin, lbBoard } from "./lb.js?v=202610190808"
+import { COLLEGES, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190808"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -101,7 +101,7 @@ function renderTitle() {
   const c = $("#challenge")
   if (linkRoster && useChallenge) {
     c.hidden = false
-    const who = linkRoster.length > 1 ? `교수님 ${linkRoster.length}명` : `공대 ${linkRoster[0].name} 교수님`
+    const who = linkRoster.length > 1 ? `교수님 ${linkRoster.length}명` : `${profTitle(linkRoster[0])}님`
     c.textContent = linkStreak ? `친구가 ${who} 상대로 ${linkStreak}연승! 넘어 보세요` : `친구가 만든 ${who}이 기다립니다`
     $("#b-fight").textContent = "결투 수락"
   } else { c.hidden = true; $("#b-fight").textContent = "연속 대전 시작" }
@@ -109,22 +109,27 @@ function renderTitle() {
 
 // 선택지 줄: 이름 | ‹ 값 ›
 const SYNC = {}
-function optRows(el, opts, get, set, labels) {
+// kind: "stu" | "prof"면 성별에 맞는 선택지만 보인다(parts.js BY_GENDER). reg: 줄마다 다시 그리는 함수 모음
+function optRows(el, opts, get, set, labels, kind, reg = SYNC) {
   el.innerHTML = ""
-  for (const [key, list] of Object.entries(opts)) {
+  for (const [key, all] of Object.entries(opts)) {
+    const vis = () => { const a = kind && allowedFor(kind, key, get()); return a ? all.filter((o) => a.includes(o[0])) : all }
     const row = document.createElement("div"); row.className = "opt"
     const lab = document.createElement("span"); lab.textContent = labels[key]
     const prev = document.createElement("button"); prev.textContent = "<"
     const val = document.createElement("span"); val.className = "v"
     const next = document.createElement("button"); next.textContent = ">"
-    const sync = () => { const t = (list.find((o) => o[0] === get()[key]) || list[0])[1]; val.textContent = t; val.classList.toggle("tiny", t.length > 11) }   // 긴 이름은 작은 글꼴
+    const sync = () => {
+      const list = vis(), t = (list.find((o) => o[0] === get()[key]) || list[0])[1]; val.textContent = t; val.classList.toggle("tiny", t.length > 11)   // 긴 이름은 작은 글꼴
+      row.style.display = list.length < 2 && list.length < all.length ? "none" : ""   // 고를 게 하나뿐이면 (여자 교수님 수염) 줄을 숨긴다
+    }
     const step = (d) => {
-      const i = list.findIndex((o) => o[0] === get()[key]), n = list[(i + d + list.length) % list.length][0]
-      set({ ...get(), [key]: n }); sync()
+      const list = vis(), i = list.findIndex((o) => o[0] === get()[key]), n = list[(i + d + list.length) % list.length][0]
+      set({ ...get(), [key]: n }); for (const f of Object.values(reg)) f()
     }
     prev.onclick = () => step(-1); next.onclick = () => step(1)
     row.append(lab, prev, val, next); el.append(row); sync()
-    el["sync_" + key] = sync; SYNC[key] = sync
+    el["sync_" + key] = sync; reg[key] = sync
   }
 }
 let rebuildTimer = 0
@@ -141,7 +146,7 @@ function stuForm() {
     box.append(h, sub)
     const opts = Object.fromEntries(rows.map(([k, , list]) => [k, list.map((o) => [o[0], o[1] + statText(o[2])])]))
     const labels = Object.fromEntries(rows.map(([k, n]) => [k, n]))
-    optRows(sub, opts, () => stu, (v) => { stu = sanitizeStu(v); saveLocal("jg-stu", stu); later(); renderStats() }, labels)
+    optRows(sub, opts, () => stu, (v) => { stu = sanitizeStu(v); saveLocal("jg-stu", stu); later(); renderStats() }, labels, "stu")
   }
 }
 stuForm()
@@ -172,11 +177,23 @@ stuNo.addEventListener("input", () => { const v = stuNo.value.replace(/[^0-9]/g,
 // 교수님 만들기: 목록의 editIdx번째 교수님을 고친다
 const pName = $("#prof-name"), pLines = [0, 1, 2].map((i) => $("#prof-l" + i))
 const editing = () => roster[editIdx]
-const PLABELS = { glasses: "안경", hair: "머리", outfit: "옷", level: "난이도" }
-optRows($("#prof-form"), PROF_OPTS, editing, (v) => { roster[editIdx] = sanitizeProf(v); saveRoster(); later(roster[editIdx]) }, PLABELS)
+const PSYNC = {}
+function profForm() {                                                    // 학생 꾸미기처럼 묶음별로
+  const box = $("#prof-form"); box.innerHTML = ""
+  for (const [gname, rows] of PROF_GROUPS) {
+    const h = document.createElement("div"); h.className = "grp"; h.textContent = gname
+    const sub = document.createElement("div"); sub.className = "form"
+    box.append(h, sub)
+    optRows(sub, Object.fromEntries(rows.map(([k, , list]) => [k, list])), editing, (v) => { roster[editIdx] = sanitizeProf(v); saveRoster(); later(roster[editIdx]); profPre() },
+      Object.fromEntries(rows.map(([k, n]) => [k, n])), "prof", PSYNC)
+  }
+}
+profForm()
+const profPre = () => ($("#prof-pre").textContent = profTitle(editing()).split(" ")[0])   // 이름 앞 단과대
 function fillProfForm() {
   const p = editing(); pName.value = p.name; pLines.forEach((el, i) => (el.value = p.lines[i] || ""))
-  for (const k of Object.keys(PROF_OPTS)) $("#prof-form")["sync_" + k]?.()
+  for (const f of Object.values(PSYNC)) f()
+  profPre()
   $("#prof-title").textContent = `${editIdx + 1}번째 교수님`
 }
 function commitProfForm() {
@@ -197,7 +214,7 @@ function renderRoster() {
     const img = buildArt({ prof: p, stu }, ["prof_idle"]).prof_idle
     f.fillStyle = "#2e5442"; f.fillRect(0, 0, 24, 24); f.drawImage(img, 67, 50, 48, 48, 0, 0, 24, 24)
     const nm = document.createElement("div"); nm.className = "nm"
-    nm.append(`${i + 1}. ${p.name} 교수`)
+    nm.append(`${i + 1}. ${profTitle(p)}`)
     const lv = document.createElement("span"); lv.className = "lv"; lv.textContent = `${LVN[p.level]} · “${p.lines[0]}”`; nm.append(lv)
     const ed = document.createElement("button"); ed.className = "btn"; ed.textContent = "수정"; ed.onclick = () => editProf(i)
     const del = document.createElement("button"); del.className = "btn"; del.textContent = "삭제"
@@ -246,13 +263,13 @@ function startRun() {
   if (!stu.college) return askCollege(startRun)
   document.activeElement?.blur?.()                       // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   const list = active()
-  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: list[0].name }
+  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college }
   startFight()
 }
 function startFight() {
   clearInterval(nextTimer)
   const p = run.list[run.stage % run.list.length]
-  run.last = p.name
+  run.last = profTitle(p); run.lastCollege = p.college
   rebuild(p)
   battle = new Battle({ art, prof: p, stu, stage: run.stage, sleep: run.sleep, onEnd: endFight, onPause: pause })
   battle.setExtra(EX)
@@ -273,7 +290,7 @@ function endFight(res) {
   run.sleep = Math.min(100, res.sleep + 30)                // 수면량은 30만 회복
   const next = run.list[run.stage % run.list.length]
   let n = 3
-  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: 공대 ${next.name} 교수 (난이도 ${run.stage + 1}) · ${n}초 뒤 시작`)
+  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1}) · ${n}초 뒤 시작`)
   info()
   setTimeout(() => { battle = null; show("next") }, 150)
   nextTimer = setInterval(() => { n--; if (n <= 0) { clearInterval(nextTimer); if (screen === "next") startFight() } else info() }, 1000)
@@ -281,7 +298,7 @@ function endFight(res) {
 function endRun(kind) {
   clearInterval(nextTimer)
   record = recordRunEnd(record, kind, run.stage)
-  const res = { result: kind, run: { streak: run.stage, defeated: run.defeated, time: run.time, last: run.last }, stats: run.stats, stu, record }
+  const res = { result: kind, run: { streak: run.stage, defeated: run.defeated, time: run.time, last: run.last, lastCollege: run.lastCollege }, stats: run.stats, stu, record }
   lastRes = res
   const card = makeCard(art, res)
   $("#card").src = card.toDataURL("image/png")
@@ -389,7 +406,7 @@ $("#b-save").onclick = async () => {
 $("#b-share").onclick = async () => {
   const blob = await cardBlob(), file = new File([blob], "jonggang.png", { type: "image/png" })
   const n = lastRes.run.streak
-  const text = n >= 1 ? `교수님 ${n}명 연속 격파! (${n}연승) 내 기록 깨 봐` : `공대 ${lastRes.run.last} 교수님에게 바로 졌다… 복수해 줘`
+  const text = n >= 1 ? `교수님 ${n}명 연속 격파! (${n}연승) 내 기록 깨 봐` : `${lastRes.run.last}님에게 바로 졌다… 복수해 줘`
   const url = rosterLink(run.list, n)
   if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text, url }); return } catch { return } }
   if (navigator.share) { try { await navigator.share({ text, url }); return } catch { return } }
@@ -434,7 +451,7 @@ function drawMenu(t) {
     const logo = textImage("종강 파이터", { font: "l14", bold: true, color: "#ffffff", outline: "#c8353b", outline2: "#1d1622", shadow: "#5a1020" })
     ctx.drawImage(logo, 90 - (logo.width >> 1), 46)
     drawText(ctx, "교수님과의 사투", 90, 70, { font: "s9", color: "#b8ffd6", outline: "#1d1622", align: "c" })
-    drawText(ctx, "공대 편", 90, 82, { font: "s7", color: "#f39aa0", outline: "#1d1622", align: "c" })
+    drawText(ctx, "전 단과대 편", 90, 82, { font: "s7", color: "#f39aa0", outline: "#1d1622", align: "c" })
     if (record.plays || record.wins) {                      // 이 브라우저에 남은 전적
       drawText(ctx, `최고 ${record.best}연승`, 90, 100, { font: "b11", color: record.best ? "#ffe04a" : "#ffffff", outline: "#1d1622", align: "c" })
       const fast = record.fastest ? ` · 최단 ${Math.floor(record.fastest / 60)}:${String(Math.floor(record.fastest % 60)).padStart(2, "0")}` : ""
@@ -459,4 +476,4 @@ function drawMenu(t) {
 })()
 
 // 테스트용 손잡이
-window.__jg = { get battle() { return battle }, get art() { return art }, get run() { return run }, get roster() { return roster }, get record() { return record }, startRun, startFight, show, pause, resume, get screen() { return screen } }
+window.__jg = { get battle() { return battle }, get art() { return art }, get run() { return run }, get roster() { return roster }, get record() { return record }, startRun, startFight, show, editProf, pause, resume, get screen() { return screen } }

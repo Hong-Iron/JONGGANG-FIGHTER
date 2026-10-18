@@ -5,11 +5,11 @@
 import { encodeRoster } from "./js/config.js"
 const log = [], shots = {}
 const f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
-async function boot(src) { f.src = src; await new Promise((r) => (f.onload = r)); const w = f.contentWindow; for (let i = 0; i < 600 && !(w.__jg && w.__jg.art); i++) await wait(50); return w }
+async function boot(src) { for (let t = 0; t < 4; t++) { f.src = src + (src.includes("?") ? "&" : "?") + "x=" + Math.random(); await new Promise((r) => (f.onload = r)); const w = f.contentWindow; for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50); if (w.__jg && w.__jg.art) return w; log.push("retry boot") } throw new Error("boot failed") }
 async function until(w, cond, ms = 6000) { const t0 = performance.now(); while (!cond() && performance.now() - t0 < ms) { const b = w.__jg.battle; if (b) for (let i = 0; i < 5; i++) b.update(0.02); await wait(5) } return cond() }
 function winNow(b) { b.intro = 0; b.attack = null; b.nextAttack = 99; b.grad = null; b.summons = 2; b.phase = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap() }
 try {
-  localStorage.clear(); localStorage.setItem("jg-seen-help", "true")
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
   let w = await boot("index.html"), d = f.contentDocument
   log.push("roster " + w.__jg.roster.length + ": " + w.__jg.roster.map((p) => p.name).join(","))
   d.getElementById("b-fight").click(); await wait(100)

@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// 교수님 꾸미기 전부를 한 장에: 옵션마다 대기 모습(교탁 포함), 단과대마다 2페이즈, 쓰러짐
+import { loadArtSource, buildArt } from "./js/art.js"
+import { PROF_PARTS } from "./js/parts.js"
+import { DEFAULT_STU, DEFAULT_PROF } from "./js/config.js"
+await loadArtSource()
+const rows = [], add = (label, imgs) => rows.push([label, imgs])
+const names = ["room", "prof_idle", "prof_p2", "prof_ko", "lectern", "prof_arms"]
+const shot = (prof, st = "idle", box = [40, 30, 100, 110]) => {
+  const a = buildArt({ prof: { ...DEFAULT_PROF, ...prof }, stu: DEFAULT_STU }, names)
+  const c = document.createElement("canvas"); c.width = box[2]; c.height = box[3]; const g = c.getContext("2d")
+  g.translate(-box[0], -box[1]); g.drawImage(a.room, 0, 0); if (st === "p2") g.drawImage(a.prof_arms, -1, -1)
+  g.drawImage(a["prof_" + st], -1, -1); g.drawImage(a.lectern, -1, -1); return c
+}
+for (const k of Object.keys(PROF_PARTS)) {
+  if (k === "level" || k === "grad") continue
+  add(k, PROF_PARTS[k].map(([v]) => shot({ [k]: v })))
+}
+add("female", ["bob", "short", "updo", "straight", "ponytail", "perm"].map((h) => shot({ gender: "f", hair: h, hcolor: "black" })))
+add("age·eyes", [...["young", "middle", "senior"].map((a) => shot({ age: a, hair: "side", hcolor: "black", glasses: "none" })), ...["normal", "sharp", "big", "droopy", "narrow"].map((e) => shot({ eyes: e, glasses: "none" }))])
+add("eyes×face", ["smirk", "kind", "stone", "tired"].flatMap((f) => ["sharp", "big"].map((e) => shot({ face: f, eyes: e, glasses: "none", gender: "f", hair: "bob", age: "young" }))))
+add("glasses+eyes", ["horn", "metal", "tint"].map((g) => shot({ glasses: g, eyes: "big" })))
+add("p2", PROF_PARTS.college.map(([v]) => shot({ college: v }, "p2", [0, 0, 180, 160])))
+add("ko", [shot({}, "ko"), shot({ hair: "long", glasses: "horn", beard: "full" }, "ko"), shot({ hat: "grad", glasses: "tint", body: "big" }, "p2")])
+const sa = (stu) => buildArt({ prof: DEFAULT_PROF, stu: { ...DEFAULT_STU, ...stu } }, ["stu_idle", "por_3_idle", "por_5_hurt"])
+const stuShot = (stu) => { const a = sa(stu), c = document.createElement("canvas"); c.width = 110; c.height = 96; const g = c.getContext("2d"); g.fillStyle = "#a89e8a"; g.fillRect(0, 0, 110, 96); g.drawImage(a.stu_idle, 0, 140, 110, 96, 0, 0, 110, 96); g.drawImage(a.por_3_idle, 74, 0); return c }
+add("stu hair", ["greasy", "buzz", "twoblock", "pudding", "bun", "capmark", "long", "ponytail", "bob", "clip"].map((h) => stuShot({ hair: h, gender: ["long", "ponytail", "bob", "clip"].includes(h) ? "f" : "m" })))
+add("stu eyes", ["normal", "sharp", "droopy", "big"].flatMap((e) => [stuShot({ eyeshape: e }), stuShot({ eyeshape: e, gender: "f", hair: "bob" })]))
+const W = 2400, out = document.createElement("canvas"), sc = 2
+let H = 0; for (const [, imgs] of rows) H += Math.max(...imgs.map((i) => i.height)) * sc + 16
+out.width = W; out.height = H; const g = out.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#222"; g.fillRect(0, 0, W, H); g.font = "12px sans-serif"
+let y = 0
+for (const [label, imgs] of rows) {
+  let x = 70; g.fillStyle = "#fff"; g.fillText(label, 4, y + 14)
+  const rh = Math.max(...imgs.map((i) => i.height)) * sc
+  for (const im of imgs) { if (x + im.width * sc > W) break; g.drawImage(im, x, y, im.width * sc, im.height * sc); x += im.width * sc + 4 }
+  y += rh + 16
+}
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ sheet: out.toDataURL() }) })
+</script>

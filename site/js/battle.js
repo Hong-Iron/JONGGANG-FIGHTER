@@ -1,8 +1,9 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190747"
-import { sfx } from "./sfx.js?v=202610190747"
-import { WEAPON, statsOf } from "./parts.js?v=202610190747"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190808"
+import { sfx } from "./sfx.js?v=202610190808"
+import { WEAPON, statsOf } from "./parts.js?v=202610190808"
+import { profTitle } from "./config.js?v=202610190808"
 
 export const W = 180, H = 320
 
@@ -322,6 +323,19 @@ export class Battle {
       if (this.bindKind === "wire" && this.bindTick <= 0) { this.bindTick = 0.5; this.damage(4, { x: 90 + rnd(-30, 30), y: 120, noGrade: true, quiet: true }) }
     }
     if (this.grad && this.grad.enter < 1) this.grad.enter = Math.min(1, this.grad.enter + dt * 2.5)
+    if (this.grad && this.grad.enter >= 1 && this.grad.type !== "shield" && !this.cine && this.intro <= 0) {
+      this.grad.tick -= dt
+      if (this.grad.tick <= 0) {
+        if (this.grad.type === "attack") {                                // 공격형 랩장: 5초마다 감점 -4
+          this.grad.tick = 5; this.sleep = Math.max(0, this.sleep - 4); this.stats.taken += 4; sfx("early")
+          this.say("감점 -4", 150, 140, C.X, { font: "b11", outline: C.U, outline2: C.K, rise: 1 })
+          if (this.sleep <= 0) return this.finish("lose")
+        } else {                                                          // 회복형 랩장: 3초마다 교수님 체력 3% 회복
+          this.grad.tick = 3; const h = Math.round(this.hpMax * 0.03); this.hp = Math.min(this.hpMax, this.hp + h); sfx("stamp")
+          this.say("결재 완료 +" + h, 150, 140, C.N, { font: "s9", outline: C.K, rise: 1 })
+        }
+      }
+    }
     // 교수님 공격 (시작 연출과 쪽지시험 동안은 쉰다)
     if (this.attack) this.updateAttack(dt)
     else if (this.bind <= 0 && this.freezeP <= 0 && this.intro <= 0 && !this.quiz) {
@@ -385,7 +399,7 @@ export class Battle {
     if (this.over || this.cine?.kind === "phase") return
     if (this.grad && this.grad.enter >= 1) {                           // 랩장이 대신 맞는다
       this.grad.hp -= n; this.grad.hitT = 0.08
-      n *= 0.2
+      n *= this.grad.type === "shield" ? 0.2 : 0.5                      // 방어형은 80%, 공격·회복형은 50%를 대신 맞는다
       if (this.grad.hp <= 0) this.gradDown()
     }
     this.hp = Math.max(0, this.hp - n)
@@ -421,7 +435,9 @@ export class Battle {
   }
   summon() {
     this.summons++
-    this.grad = { hp: this.L.gradHp, max: this.L.gradHp, enter: 0, hitT: 0, line: this.summons === 1 ? "그건 교수님께 말씀드리기 전에 제 선에서 정리할게요" : "교수님, 제가 막겠습니다", lineT: 2.6 }
+    const type = this.prof.grad || "shield"
+    const LINES = { shield: ["그건 교수님께 말씀드리기 전에 제 선에서 정리할게요", "교수님, 제가 막겠습니다"], attack: ["이 부분 감점 사유입니다", "채점 기준표 다시 보세요"], heal: ["교수님, 결재 올려 두었습니다", "연구비 정산 끝났습니다"] }[type] || []
+    this.grad = { type, tick: type === "attack" ? 4 : 2.5, hp: this.L.gradHp * (type === "shield" ? 1 : 0.8), max: this.L.gradHp * (type === "shield" ? 1 : 0.8), enter: 0, hitT: 0, line: LINES[this.summons === 1 ? 0 : 1], lineT: 2.6 }
     this.say("랩장, 이거 자네가 좀 봐주게", 100, 50, C.K, { font: "s9", bubble: true })
   }
   gradDown() {
@@ -871,7 +887,7 @@ export class Battle {
     x.fillStyle = C.plate; x.fillRect(0, 0, W, 32)
     x.fillStyle = C.plateL; x.fillRect(0, 0, W, 2); x.fillStyle = C.plateD; x.fillRect(0, 30, W, 2)
     for (const [rx, ry] of [[2, 3], [176, 3], [2, 27], [176, 27]]) { x.fillStyle = C.rivet; x.fillRect(rx, ry, 2, 2); x.fillStyle = C.plateD; x.fillRect(rx + 1, ry + 1, 1, 1) }
-    drawFit(x, `공대 ${this.prof.name} 교수`, 6, 3, 90, { font: "b11", color: C.X, shadow: C.plateD })   // 이름이 길면 작은 글꼴, 그래도 길면 말줄임
+    drawFit(x, profTitle(this.prof), 6, 3, 90, { font: "b11", color: C.X, shadow: C.plateD })   // 이름이 길면 작은 글꼴, 그래도 길면 말줄임
     if (this.phase === 1) drawText(x, `2페이즈 -${Math.max(0, Math.round((this.hp / this.hpMax - 0.5) * 100))}%`, 151, 5, { font: "s7", color: C.Q, align: "r" })
     else drawText(x, "학회 마감 D-1", 151, 5, { font: "s7", color: Math.floor(t * 4) % 2 ? C.U : C.Q, align: "r" })
     x.fillStyle = C.plateD; x.fillRect(5, 16, 146, 11); x.fillStyle = C.K; x.fillRect(6, 17, 144, 9); x.fillStyle = C.m; x.fillRect(7, 18, 142, 7)

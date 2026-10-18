@@ -1,11 +1,14 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
 // res.result: "lose"(쓰러짐) | "timeout"(3분 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610190747"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610190808"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
+const LAB = { eng: "제1공학관 지하 랩실", hum: "인문관 고문헌 열람실", soc: "사회관 설문 분석실", sci: "자연관 지하 실험실", art: "실기동 크리틱 룸" }
+const STU_C = { eng: "공대생 ", hum: "인문대생 ", soc: "사회대생 ", sci: "자연대생 ", art: "예대생 " }
 function doc(res) {
   const n = res.run.streak, last = res.run.last, t = res.run.time
+  const lab = LAB[res.run.lastCollege] || LAB.eng
   const mm = Math.floor(t / 60), ss = Math.floor(t % 60)
   if (res.result === "quit") {
     if (n === 0) return { title: "휴학계 수리 통지서", stamp: "수리", alive: true,
@@ -14,11 +17,11 @@ function doc(res) {
       body: `귀하는 교수님 ${n}명을 연달아 물리치고 (총 ${mm}분 ${ss}초) 스스로 강의실을 나섰으므로 수강철회를 승인합니다.` }
   }
   if (res.result === "timeout") return { title: "계절학기 등록금 고지서", stamp: "미달", alive: false,
-    body: n ? `귀하는 교수님 ${n}명을 넘었으나 공대 ${last} 교수를 3분 안에 설득하지 못했으므로 계절학기 등록을 명합니다.`
-      : `귀하는 3분 동안 공대 ${last} 교수를 설득하지 못했으므로 계절학기 등록을 명합니다.` }
+    body: n ? `귀하는 교수님 ${n}명을 넘었으나 ${last}를 3분 안에 설득하지 못했으므로 계절학기 등록을 명합니다.`
+      : `귀하는 3분 동안 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.` }
   return { title: "대학원 강제 입학 통지서", stamp: "입학", alive: false,
-    body: n ? `귀하는 교수님 ${n}명을 연달아 물리쳤으나 공대 ${last} 교수에게 쓰러져 제1공학관 지하 랩실에 무기한 수감되었습니다.`
-      : `귀하는 다크서클 5단계 상태로 쓰러져 제1공학관 지하 랩실에 무기한 수감되었습니다. (남은 수면량 0%)` }
+    body: n ? `귀하는 교수님 ${n}명을 연달아 물리쳤으나 ${last}에게 쓰러져 ${lab}에 무기한 수감되었습니다.`
+      : `귀하는 다크서클 5단계 상태로 쓰러져 ${lab}에 무기한 수감되었습니다. (남은 수면량 0%)` }
 }
 
 export function makeCard(art, res) {
@@ -44,8 +47,8 @@ export function makeCard(art, res) {
   drawText(x, d.alive ? "생존" : "기절", 132, 81, { font: "s9", color: d.alive ? "#1d6b3f" : R, align: "c" })
   drawText(x, `${n}연승`, 132, 92, { font: "b11", color: n ? R : G, align: "c" })
   x.fillStyle = K; box(x, 93, 43, 78, 68)
-  drawFit(x, `공대 ${res.run.last} 교수`, 48, 112, 78, { font: "s7", color: K, align: "c" })
-  drawText(x, "피고: 공대생 " + res.stu.no + "학번", 132, 112, { font: "s7", color: K, align: "c" })
+  drawFit(x, res.run.last, 48, 112, 78, { font: "s7", color: K, align: "c" })
+  drawText(x, "피고: " + (STU_C[res.stu.college] || "") + res.stu.no + "학번", 132, 112, { font: "s7", color: K, align: "c" })
   // 본문
   wrap(d.body, "s9", w - 24, 5).forEach((l, i) => drawText(x, l, 12, 125 + i * 11, { font: "s9", color: K }))
   const s = res.stats
