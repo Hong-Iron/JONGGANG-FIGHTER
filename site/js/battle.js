@@ -1,7 +1,7 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190654"
-import { sfx } from "./sfx.js?v=202610190654"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190708"
+import { sfx } from "./sfx.js?v=202610190708"
 
 export const W = 180, H = 320
 
@@ -25,6 +25,26 @@ const LV = {
   normal: { whiff: 3, hp: 520, tele: [1.15, 0.9], gap: [[1.3, 2.0], [1.0, 1.6]], dmg: [11, 15], gradHp: 50, quiz: 18 },
   hard: { whiff: 5, hp: 640, tele: [0.95, 0.75], gap: [[1.0, 1.5], [0.8, 1.3]], dmg: [14, 19], gradHp: 65, quiz: 22 },
 }
+// 연승(stage)마다 어려워진다: 체력·공격력은 늘고, 예고·공격 간격은 줄고, 쪽지시험 목표와 함정이 늘어난다
+function scaled(b, s) {
+  const quick = Math.max(0.6, 1 - 0.045 * s), often = Math.max(0.55, 1 - 0.05 * s)
+  return {
+    ...b,
+    hp: Math.round(b.hp * (1 + 0.12 * s)),
+    tele: b.tele.map((v) => Math.max(0.5, v * quick)),
+    gap: b.gap.map(([lo, hi]) => [lo * often, hi * often]),
+    dmg: b.dmg.map((v) => Math.round(v * (1 + 0.08 * s))),
+    gradHp: Math.round(b.gradHp * (1 + 0.15 * s)),
+    quiz: b.quiz + Math.floor(s / 2) * 2,
+    whiff: b.whiff + Math.floor(s / 3),
+    decoy: Math.min(0.65, 0.3 + 0.05 * s),
+    decoyP1: s >= 3 ? Math.min(0.4, 0.1 * (s - 2)) : 0,
+  }
+}
+let vibrate = true
+export function setVibrate(v) { vibrate = v }
+function buzz(p) { if (vibrate && navigator.vibrate) try { navigator.vibrate(p) } catch {} }
+
 // 학생 공격 동작: [자세, 길이(초), 맞는 순간]. 빠르게 연타하면 휘두르기 준비 자세를 건너뛴다
 const MOVES = {
   smash: [["windup", 0.035], ["smash", 0.075, true], ["follow", 0.09]],
@@ -55,13 +75,14 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)]
 const inRect = (x, y, rx, ry, rw, rh) => x >= rx && x < rx + rw && y >= ry && y < ry + rh
 
 export class Battle {
-  constructor({ art, prof, stu, onEnd }) {
-    this.art = art; this.prof = prof; this.stu = stu; this.onEnd = onEnd
-    const L = LV[prof.level] || LV.normal
+  constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100 }) {
+    this.art = art; this.prof = prof; this.stu = stu; this.onEnd = onEnd; this.onPause = onPause
+    this.stage = stage
+    const L = scaled(LV[prof.level] || LV.normal, stage)
     this.L = L
     this.t = 0; this.freeze = 0
     this.hpMax = L.hp; this.hp = L.hp; this.trail = L.hp
-    this.sleep = 100; this.caff = 40; this.timeLeft = 180
+    this.sleep = Math.max(1, Math.min(100, sleep)); this.caff = 40; this.timeLeft = 180; this.paused = false
     this.phase = 1; this.cine = null
     this.attack = null; this.nextAttack = 0.6
     this.intro = 1.1; this.anim = null; this.quiz = null; this.quizzes = 0
@@ -84,6 +105,7 @@ export class Battle {
   // ------------------------------------------------------------ 입력
   pointer(x, y) {
     if (this.over) return
+    if (inRect(x, y, 153, 2, 25, 28)) return this.onPause?.()           // 시계를 누르면 일시정지
     if (y >= ARENA_TOP) y = Math.max(ARENA_TOP, y - this.ex)            // 늘어난 천장을 누르면 강의실 위쪽을 누른 것으로
     const a = this.attack
     if (a && !a.done && a.e >= a.appear) {                            // 손가락이 조금 빗나가도 잡히게 3px 여유
@@ -103,7 +125,7 @@ export class Battle {
     const spot = () => [Math.round(rnd(8, W - TW - 8)), Math.round(rnd(44, ARENA_BOT - TH - 30))]
     ;[a.tx, a.ty] = spot()
     a.decoy = null
-    if (this.phase === 2 && Math.random() < 0.3) {                    // 2페이즈: 회색 '재수강' 함정이 같이 뜬다
+    if (Math.random() < (this.phase === 2 ? this.L.decoy : this.L.decoyP1)) {   // 회색 '재수강' 함정 (2페이즈, 연승이 쌓이면 1페이즈에도)
       for (let k = 0; k < 12; k++) { const [x, y] = spot(); if (Math.abs(x - a.tx) > TW + 6 || Math.abs(y - a.ty) > TH + 8) { a.decoy = true; a.dx = x; a.dy = y; break } }
     }
     a.appear = Math.max(0.12, a.hitAt * 0.28)
@@ -113,6 +135,7 @@ export class Battle {
     if (k === " " || k === "k" || k === "K") this.parry()
     else if (k === "1" || k === "2" || k === "3") this.skill(Number(k) - 1)
     else if ("jJfFdD".includes(k) || k === "Enter") this.tap(100, 120)
+    else if (k === "p" || k === "P" || k === "Escape") this.onPause?.()
   }
 
   tap() {
@@ -168,7 +191,7 @@ export class Battle {
     this.parryPress = this.t
     a.done = true; a.parried = true
     this.stats.parries++; if (perfect) this.stats.perfect++
-    sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15)
+    sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15); buzz(perfect ? [15, 30, 15] : 20)
     this.caff = Math.min(100, this.caff + (perfect ? 18 : 10))
     this.shatter(a)
     if (a.kind === "chalk") this.fx.push({ type: "chalkback", t: 0, life: 0.25 })
@@ -184,7 +207,7 @@ export class Battle {
     const pen = this.L.whiff
     this.parryLock = 0.4; this.stats.whiffs++
     this.sleep = Math.max(0, this.sleep - pen); this.stats.taken += pen
-    this.hurtT = 0.2; this.shake(1, 0.08); this.flash = { t: 0.08, color: C.Q }; sfx("early")
+    this.hurtT = 0.2; this.shake(1, 0.08); this.flash = { t: 0.08, color: C.Q }; sfx("early"); buzz(40)
     this.say(`${msg} -${pen} 수면량`, 52, 176, C.X, { font: "b11", outline: C.r, outline2: C.K })
     if (this.sleep <= 0) this.finish("lose")
   }
@@ -210,6 +233,7 @@ export class Battle {
   update(dt) {
     if (this.ended) return
     dt = Math.min(dt, 0.05)
+    if (this.paused) return
     this.updateFx(dt)
     if (this.freeze > 0) { this.freeze -= dt; return }
     this.t += dt
@@ -276,7 +300,7 @@ export class Battle {
       a.done = true
       const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1)
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
-      this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt")
+      this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz(70)
       this.combo = 0
       this.say("-" + Math.round(dmg) + " 수면량", 40, 168, C.X, { font: "b11", outline: C.U, outline2: C.K, rise: 1 })
       if (a.kind === "spec") { this.spec = 8; this.say("스펙 변경: 데미지 무작위 8초", 90, 150, C.N, { font: "s9", outline: C.K }) }
@@ -372,7 +396,7 @@ export class Battle {
     if (!this.ended && this.overT > 2.4) {
       this.ended = true
       const used = 180 - this.timeLeft
-      this.onEnd({ result: this.over, time: used, sleep: Math.round(this.sleep), stats: this.stats, prof: this.prof, stu: this.stu })
+      this.onEnd({ result: this.over, time: used, sleep: Math.round(this.sleep), stats: this.stats, prof: this.prof, stu: this.stu, stage: this.stage })
     }
   }
 
@@ -589,6 +613,10 @@ export class Battle {
     x.fillStyle = C.K; x.fillRect(50, y0 + 43, 82, 4); x.fillStyle = left < 0.3 ? C.U : C.O; x.fillRect(51, y0 + 44, Math.round(80 * left), 2)
   }
   drawIntro(x) {
+    if (this.stage > 0) {
+      drawText(x, `${this.stage + 1}번째 교수님`, 90, 74, { font: "b11", color: C.X, outline: C.K, align: "c" })
+      drawText(x, `난이도 ${this.stage + 1}`, 90, 132, { font: "s9", color: C.Q, outline: C.K, align: "c" })
+    }
     const s = this.intro > 0.5 ? "출석 체크!" : "시작!"
     const img = textImage(s, { font: "l14", bold: true, stamp: this.intro > 0.5 ? -6 : 5, color: C.U, outline: C.X, outline2: C.d7 })
     const pop = (this.intro > 0.5 ? 1.1 - this.intro : 0.5 - this.intro) < 0.06 ? -4 : 0
@@ -697,6 +725,7 @@ export class Battle {
     if (this.spec > 0) drawText(x, `스펙 변경 ${Math.ceil(this.spec)}초`, 6, 225, { font: "s7", color: C.N, outline: C.K })
     x.restore()
     if (this.combo >= 5) drawText(x, `${this.combo} 콤보`, 6, 34 + 2, { font: "b11", color: C.O, outline: C.K })
+    if (this.stage > 0) drawText(x, `${this.stage}연승 중`, 176, 36, { font: "s9", color: "#ffe04a", outline: C.K, align: "r" })
   }
   gauge(x, X, Y, f, col, hi) {
     x.fillStyle = C.K; x.fillRect(X, Y, 100, 9); x.fillStyle = C.m; x.fillRect(X + 1, Y + 1, 98, 7)

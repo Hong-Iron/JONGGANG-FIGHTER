@@ -1,9 +1,9 @@
 // pxl 엔진을 브라우저에서 돌려 그림 원본(art/game.px.js)을 꾸미기 선택(OPT)대로 그린다.
-import { Project } from "../vendor/pxl/core/index.js?v=202610190654"
+import { Project } from "../vendor/pxl/core/index.js?v=202610190708"
 
 let SRC = ""
 export async function loadArtSource() {
-  SRC = await (await fetch("art/game.px.js?v=202610190654")).text()
+  SRC = await (await fetch("art/game.px.js?v=202610190708")).text()
 }
 
 const NAMES = [
@@ -36,6 +36,7 @@ export function buildArt(opt, names = NAMES) {
   new Function(...Object.keys(env), SRC)(...Object.values(env))
   const out = {}
   for (const n of names) out[n] = toCanvas(p.image(n))
+  if (names !== NAMES) return out                                   // 목록 썸네일처럼 일부만 그릴 때
   for (const n of ["prof_idle", "prof_p2", "grad"]) out[n + "_white"] = silhouette(out[n], "#ffffff")
   for (const n of ["prof_idle", "prof_p2", "prof_ko", "lectern", "grad", "stu_idle", "stu_windup", "stu_smash", "stu_follow", "stu_sweepA", "stu_sweepB", "stu_overUp", "stu_overDown"]) out[n + "_shadow"] = silhouette(out[n], "#6e6178")
   out.prof_arms_shadow = silhouette(out.prof_arms, "#6e6178")

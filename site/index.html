@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="canonical" href="https://hong-iron.github.io/JONGGANG-FIGHTER/">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
-<link rel="stylesheet" href="css/style.css?v=202610190654">
+<link rel="stylesheet" href="css/style.css?v=202610190708">
 </head>
 <body>
 <div id="wrap">
@@ -32,8 +32,8 @@
       <section id="s-title" class="screen">
         <div class="title-gap"></div>
         <p id="challenge" class="banner" hidden></p>
-        <button id="b-fight" class="btn primary">결투 시작</button>
-        <button id="b-prof" class="btn">교수님 만들기</button>
+        <button id="b-fight" class="btn primary">연속 대전 시작</button>
+        <button id="b-roster" class="btn">교수님 목록</button>
         <button id="b-stu" class="btn">학생 꾸미기</button>
         <div class="row small">
           <button id="b-sound" class="btn mini">소리 켬</button>
@@ -50,7 +50,8 @@
           <li>2페이즈에는 회색 <b>[재수강]</b> 함정도 뜬다. 누르면 수면량이 깎인다 (PC는 Space로도 반박. 너무 일찍 누르면 깎인다)</li>
           <li>아래 스킬: <b>점퍼선</b> 3초 묶기 · <b>원샷</b> 5초 데미지 2배 · <b>강제 푸시</b> 카페인 100으로 큰 한 방 (PC: 1, 2, 3)</li>
           <li>체력 50%에서 <b>2페이즈</b>. 랩장이 나오면 먼저 쓰러뜨려야 교수님에게 데미지가 제대로 들어간다</li>
-          <li>수면량이 0이 되거나 3분이 지나면 진다</li>
+          <li>교수님을 이기면 3초 뒤 <b>다음 교수님</b>과 자동으로 싸운다. 이길수록 난이도가 오르고, 수면량은 조금만 회복된다</li>
+          <li>수면량이 0이 되거나 한 판에 3분이 지나면 도전이 끝난다. 시계를 누르면(PC: P) 잠깐 멈추고 그만둘 수 있다</li>
         </ul>
         <button class="btn primary" data-go="title">알겠어요</button>
       </section>
@@ -63,19 +64,43 @@
         <button class="btn primary" data-go="title">완료</button>
       </section>
 
+      <section id="s-roster" class="screen">
+        <h2>교수님 목록</h2>
+        <p class="small-note">위에서부터 차례로 싸워요. 최대 6명</p>
+        <div id="roster-list" class="roster"></div>
+        <button id="b-add" class="btn">교수님 추가</button>
+        <div class="row">
+          <button id="b-link" class="btn">결투장 링크 복사</button>
+          <button id="b-roster-fight" class="btn primary">연속 대전</button>
+        </div>
+        <button class="btn mini" data-go="title">뒤로</button>
+      </section>
+
       <section id="s-prof" class="screen">
-        <h2>교수님 만들기</h2>
+        <h2 id="prof-title">교수님 만들기</h2>
         <canvas id="prof-preview" width="80" height="64" class="pix"></canvas>
         <label class="field">이름 <span class="pre">공대</span><input id="prof-name" maxlength="8"><span class="pre">교수</span></label>
         <label class="field">말버릇 1 <input id="prof-l0" maxlength="24"></label>
         <label class="field">말버릇 2 <input id="prof-l1" maxlength="24"></label>
         <label class="field">말버릇 3 <input id="prof-l2" maxlength="24"></label>
         <div id="prof-form" class="form"></div>
-        <div class="row">
-          <button id="b-link" class="btn">링크 복사</button>
-          <button id="b-prof-fight" class="btn primary">결투하기</button>
-        </div>
-        <button class="btn mini" data-go="title">뒤로</button>
+        <button class="btn primary" data-go="roster">완료</button>
+      </section>
+
+      <section id="s-next" class="screen dim">
+        <div class="title-gap"></div>
+        <p id="next-info" class="banner"></p>
+        <button id="b-next" class="btn primary">바로 다음 교수님</button>
+        <button id="b-stop" class="btn">여기서 그만하기</button>
+        <div class="title-gap"></div>
+      </section>
+
+      <section id="s-pause" class="screen dim">
+        <div class="title-gap"></div>
+        <p class="banner">일시정지</p>
+        <button id="b-resume" class="btn primary">계속하기</button>
+        <button id="b-quit" class="btn">그만하고 결과 보기</button>
+        <div class="title-gap"></div>
       </section>
 
       <section id="s-battle" class="screen pass"></section>
@@ -87,7 +112,7 @@
           <button id="b-share" class="btn">공유</button>
         </div>
         <div class="row">
-          <button id="b-again" class="btn">다시 하기</button>
+          <button id="b-again" class="btn">다시 도전</button>
           <button id="b-link2" class="btn">링크 복사</button>
         </div>
         <div class="row support-row">
@@ -100,6 +125,6 @@
     <div id="toast" hidden></div>
   </div>
 </div>
-<script type="module" src="js/main.js?v=202610190654"></script>
+<script type="module" src="js/main.js?v=202610190708"></script>
 </body>
 </html>

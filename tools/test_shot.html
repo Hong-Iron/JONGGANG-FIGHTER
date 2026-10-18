@@ -7,21 +7,31 @@ f.style.width = q.get("w") + "px"; f.style.height = q.get("h") + "px"
 localStorage.clear()
 localStorage.setItem("jg-seen-help", "true")
 localStorage.setItem("jg-prof", JSON.stringify({ name: "가나다라마바사아", lines: ["자네, 이러고도 졸업할 수 있을 것 같나?"], glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }))
+localStorage.removeItem("jg-roster")
 localStorage.setItem("jg-record", JSON.stringify({ streak: 3, best: 5, wins: 7, losses: 2, plays: 9, fastest: 74.5, last: "win" }))
 f.src = "index.html"
 f.onload = async () => {
   const w = f.contentWindow, wait = (ms) => new Promise((r) => setTimeout(r, ms))
   for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
   const st = q.get("state")
+  if (st === "roster") { w.__jg.show("roster"); return }
+  if (st === "next" || st === "pause") {
+    f.contentDocument.getElementById("b-fight").click(); await wait(100)
+    const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99
+    if (st === "pause") { w.__jg.pause(); return }
+    b.grad = null; b.summons = 2; b.phase = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap()
+    for (let i = 0; i < 300 && w.__jg.screen !== "next"; i++) { b.update(0.02); await wait(1) }
+    return
+  }
   if (st === "battle" || st === "result") {
-    w.__jg.startBattle(); const b = w.__jg.battle
+    w.__jg.startRun(); const b = w.__jg.battle
     b.intro = 0; b.nextAttack = 99; b.phase = 2; b.armsT = 1
     for (let i = 0; i < 10; i++) { b.lastTap = -9; b.t += 0.1; b.tap() }
     b.startAttack(); b.attack.kind = "single"; b.attack.text = "자네, 이러고도 졸업할 수 있을 것 같나?"; b.attack.hitAt = 9; b.attack.decoy = true; b.attack.dx = 20; b.attack.dy = 150
     b.attack.e = b.attack.appear + 0.3
     if (st === "battle") { b.ended = true; return }
-    b.attack = null; b.grad = null; b.summons = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap()
-    for (let i = 0; i < 300 && w.__jg.battle; i++) { b.update(0.02); await wait(1) }
+    b.finish("lose")
+    for (let i = 0; i < 300 && w.__jg.screen !== "result"; i++) { b.update(0.02); await wait(1) }
   }
 }
 </script>
