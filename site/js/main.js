@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190808"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190808"
-import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190808"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190808"
-import { makeCard } from "./card.js?v=202610190808"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190808"
-import { lbWin, lbBoard } from "./lb.js?v=202610190808"
-import { COLLEGES, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190808"
+import { loadArtSource, buildArt } from "./art.js?v=202610190813"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190813"
+import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190813"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190813"
+import { makeCard } from "./card.js?v=202610190813"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190813"
+import { lbWin, lbBoard } from "./lb.js?v=202610190813"
+import { COLLEGES, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190813"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -476,4 +476,14 @@ function drawMenu(t) {
 })()
 
 // 테스트용 손잡이
+// 방문 수 (GoatCounter, 쿠키 없음): 공유·후원·랭킹 버튼과 친구 링크로 들어온 것만 센다. SMASH와 같은 사이트라 이름 앞에 jg-
+function gcEvent(path) {
+  try { const g = window.goatcounter; if (g && g.count) g.count({ path: "jg-" + path, title: "jonggang", event: true }) } catch { /* 브라우저가 막음 */ }
+}
+for (const [sel, ev] of [["#b-share", "share-open"], ["#b-save", "share-save"], ["#b-link2", "share-link"], ["#b-link", "duel-link"], [".support.kakao", "support-kakaopay"], [".support.bmc", "support-bmc"], ["#b-board", "board-open"], ["#b-board2", "board-open"]])
+  document.querySelector(sel)?.addEventListener("click", () => gcEvent(ev))
+if (linkRoster) {                                                         // count.js가 늦게 오면 잠깐 기다렸다 보낸다
+  let tries = 0; const t = setInterval(() => { if (window.goatcounter?.count || ++tries > 20) { clearInterval(t); gcEvent("challenge-open") } }, 500)
+}
+
 window.__jg = { get battle() { return battle }, get art() { return art }, get run() { return run }, get roster() { return roster }, get record() { return record }, startRun, startFight, show, editProf, pause, resume, get screen() { return screen } }

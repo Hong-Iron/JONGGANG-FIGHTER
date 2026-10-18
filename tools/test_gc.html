@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// GoatCounter 이벤트: 가짜 goatcounter.count로 바꿔 어떤 이름이 나가는지 본다 (localhost에선 진짜 count.js가 세지 않는다)
+import { encodeRoster } from "./js/config.js"
+const log = [], f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms)), calls = []
+async function boot(src) {
+  for (let t = 0; t < 4; t++) {
+    f.src = src + (src.includes("?") ? "&" : "?") + "x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow; w.goatcounter = { count: (o) => calls.push(o) }
+    for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+  }
+  throw new Error("boot failed")
+}
+try {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  let w = await boot("index.html"), d = f.contentDocument
+  log.push("tag: " + !!d.querySelector('script[data-goatcounter="https://sassafras.goatcounter.com/count"]'))
+  d.addEventListener("click", (e) => { if (e.target.closest("a")) e.preventDefault() }, true)   // 후원 링크가 새 탭을 열지 않게
+  d.getElementById("b-board").click(); await wait(100); w.__jg.show("title")
+  w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+  w.__jg.battle.intro = 0; w.__jg.battle.finish("lose")
+  for (let i = 0; i < 100 && w.__jg.screen !== "result"; i++) { w.__jg.battle?.update(0.05); await wait(20) }
+  log.push("screen " + w.__jg.screen)
+  for (const sel of ["#b-save", "#b-link2", ".support.kakao", ".support.bmc", "#b-board2"]) { d.querySelector(sel).click(); await wait(150) }
+  w.__jg.show("roster"); d.getElementById("b-link").click(); await wait(100)
+  log.push("events: " + calls.map((c) => c.path + (c.event ? "" : "(not event)")).join(", "))
+  calls.length = 0
+  w = await boot("index.html?r=" + encodeRoster([{ name: "홍OO" }]) + "&s=3"); await wait(1500)
+  log.push("friend link: " + calls.map((c) => c.path).join(", "))
+  calls.length = 0
+  w = await boot("index.html"); await wait(1500)
+  log.push("plain visit events: " + (calls.map((c) => c.path).join(", ") || "none"))
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

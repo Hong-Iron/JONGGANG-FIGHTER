@@ -1,4 +1,4 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190808"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190813"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)

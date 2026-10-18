@@ -32,3 +32,7 @@ art/                  스타일 목업과 데모 (배포 안 함)
 - 글꼴: [갈무리](https://github.com/quiple/galmuri) (OFL-1.1), jsDelivr에서 불러온다.
 - 미리보기: `node <pxl>/bin/pxl.js build site/art/game.px.js --only preview`
 - 로컬 실행: `cd site && python3 -m http.server`
+
+## 방문 수
+
+방문 수는 쿠키를 쓰지 않는 [GoatCounter](https://www.goatcounter.com/)로 셉니다. 공유·이미지 저장·링크 복사·후원·랭킹 버튼을 누른 횟수와 친구 링크로 들어온 횟수도 함께 셉니다(이벤트 이름은 `jg-`로 시작).
