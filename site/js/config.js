@@ -1,9 +1,11 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190813"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190828"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
 export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"]]
 export const STU_OPTS = PARTS                             // 묶음과 스탯은 parts.js
+// 카카오톡 공유: 카카오 앱 "종강 파이터"의 JavaScript 키 (공개 키, 사이트 도메인 https://hong-iron.github.io 등록)
+export const KAKAO_KEY = "de3c45d83caca2bbab2ec89f8fc967f2"
 export const DEFAULT_LINES = ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"]
 export const DEFAULT_PROF = {
   name: "김OO", lines: DEFAULT_LINES.slice(), college: "eng", level: "normal", grad: "shield", gender: "m", age: "middle", skin: "base", eyes: "normal", body: "normal", face: "smirk", beard: "none",

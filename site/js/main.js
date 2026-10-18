@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190813"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190813"
-import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190813"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190813"
-import { makeCard } from "./card.js?v=202610190813"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190813"
-import { lbWin, lbBoard } from "./lb.js?v=202610190813"
-import { COLLEGES, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190813"
+import { loadArtSource, buildArt } from "./art.js?v=202610190828"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190828"
+import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190828"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190828"
+import { makeCard } from "./card.js?v=202610190828"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190828"
+import { lbWin, lbBoard } from "./lb.js?v=202610190828"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190828"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -303,6 +303,7 @@ function endRun(kind) {
   const card = makeCard(art, res)
   $("#card").src = card.toDataURL("image/png")
   lastRes.cardCanvas = card
+  lastRes.kakaoImage = null; prepKakao(lastRes)
   setTimeout(() => { battle = null; show("result") }, 200)
   if (run.stage && stu.college !== "none") setTimeout(async () => {   // 결과 화면에 내 단과대 순위 한 줄
     const rows = await lbBoard(); if (!rows || screen !== "result") return
@@ -403,10 +404,53 @@ $("#b-save").onclick = async () => {
   a.href = URL.createObjectURL(blob); a.download = `종강파이터_${lastRes.run.streak}연승.png`
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000)
 }
+// 카카오톡 공유: 결과 카드를 카카오 서버에 미리 올려 두고, 누르면 카드 + [나도 해보기] 버튼을 보낸다
+let kakaoReady = null
+function loadKakao() {
+  if (!KAKAO_KEY) return Promise.resolve(false)
+  if (kakaoReady) return kakaoReady
+  kakaoReady = new Promise((res) => {
+    const sc = document.createElement("script")
+    sc.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"; sc.crossOrigin = "anonymous"
+    sc.integrity = "sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J"
+    sc.onload = () => { try { if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_KEY); res(true) } catch { res(false) } }
+    sc.onerror = () => res(false)
+    document.head.append(sc)
+  })
+  return kakaoReady
+}
+function prepKakao(res) {                                                 // 누르는 순간 바로 보내야 팝업이 막히지 않는다
+  res.kakaoImage = loadKakao().then(async (ok) => {
+    if (!ok) return null
+    const blob = await new Promise((r) => res.cardCanvas.toBlob(r, "image/png"))
+    const out = await window.Kakao.Share.uploadImage({ file: [new File([blob], "jonggang.png", { type: "image/png" })] })
+    return out.infos.original.url
+  }).catch(() => null)
+}
+const shareText = (res) => res.run.streak >= 1 ? `교수님 ${res.run.streak}명 연속 격파! (${res.run.streak}연승) 내 기록 깨 봐` : `${res.run.last}님에게 바로 졌다… 복수해 줘`
+$("#b-kakao").onclick = async () => {
+  const res = lastRes, n = res.run.streak, url = rosterLink(run.list, n)
+  if (await loadKakao()) {
+    const img = await Promise.race([res.kakaoImage, new Promise((r) => setTimeout(() => r(null), 4000))])
+    try {
+      window.Kakao.Share.sendDefault({
+        objectType: "feed",
+        content: {
+          title: n >= 1 ? `종강 파이터 ${n}연승` : "종강 파이터",
+          description: shareText(res),
+          imageUrl: img || new URL("og.png", location.href).toString(), imageWidth: img ? 1080 : 1200, imageHeight: img ? 1350 : 630,
+          link: { mobileWebUrl: url, webUrl: url },
+        },
+        buttons: [{ title: "나도 해보기", link: { mobileWebUrl: url, webUrl: url } }],
+      })
+      return
+    } catch { /* 아래 다른 방법으로 */ }
+  }
+  toast((await copyText(shareText(res) + " " + url)) ? "카카오톡을 열 수 없어 공유 문구와 링크를 복사했어요" : url)
+}
 $("#b-share").onclick = async () => {
   const blob = await cardBlob(), file = new File([blob], "jonggang.png", { type: "image/png" })
-  const n = lastRes.run.streak
-  const text = n >= 1 ? `교수님 ${n}명 연속 격파! (${n}연승) 내 기록 깨 봐` : `${lastRes.run.last}님에게 바로 졌다… 복수해 줘`
+  const n = lastRes.run.streak, text = shareText(lastRes)
   const url = rosterLink(run.list, n)
   if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text, url }); return } catch { return } }
   if (navigator.share) { try { await navigator.share({ text, url }); return } catch { return } }
@@ -480,7 +524,7 @@ function drawMenu(t) {
 function gcEvent(path) {
   try { const g = window.goatcounter; if (g && g.count) g.count({ path: "jg-" + path, title: "jonggang", event: true }) } catch { /* 브라우저가 막음 */ }
 }
-for (const [sel, ev] of [["#b-share", "share-open"], ["#b-save", "share-save"], ["#b-link2", "share-link"], ["#b-link", "duel-link"], [".support.kakao", "support-kakaopay"], [".support.bmc", "support-bmc"], ["#b-board", "board-open"], ["#b-board2", "board-open"]])
+for (const [sel, ev] of [["#b-kakao", "share-kakao"], ["#b-share", "share-open"], ["#b-save", "share-save"], ["#b-link2", "share-link"], ["#b-link", "duel-link"], [".support.kakao", "support-kakaopay"], [".support.bmc", "support-bmc"], ["#b-board", "board-open"], ["#b-board2", "board-open"]])
   document.querySelector(sel)?.addEventListener("click", () => gcEvent(ev))
 if (linkRoster) {                                                         // count.js가 늦게 오면 잠깐 기다렸다 보낸다
   let tries = 0; const t = setInterval(() => { if (window.goatcounter?.count || ++tries > 20) { clearInterval(t); gcEvent("challenge-open") } }, 500)

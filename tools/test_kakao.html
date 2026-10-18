@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 카카오톡 공유: SDK 스크립트를 가짜로 바꿔 업로드와 보내는 내용(제목·이미지·[나도 해보기] 링크)을 본다
+const log = [], shots = {}, f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot(src) {
+  for (let t = 0; t < 4; t++) {
+    f.src = src + "?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow
+    for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+  }
+  throw new Error("boot failed")
+}
+try {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  const w = await boot("index.html"), d = f.contentDocument, sent = [], uploads = []
+  const head = d.head, orig = head.append.bind(head)
+  head.append = (el) => {
+    if (el.src && el.src.includes("kakaocdn")) {
+      log.push("sdk " + el.src.split("/").slice(-2).join("/") + " integrity " + !!el.integrity)
+      w.Kakao = { isInitialized: () => !!w.Kakao.key, init: (k) => (w.Kakao.key = k), Share: {
+        uploadImage: async ({ file }) => { uploads.push(file[0].size); return { infos: { original: { url: "https://k.kakaocdn.net/fake.png" } } } },
+        sendDefault: (o) => sent.push(o) } }
+      setTimeout(() => el.onload(), 10); return
+    }
+    return orig(el)
+  }
+  w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+  w.__jg.battle.stage = 0; w.__jg.run.stage = 3; w.__jg.battle.intro = 0; w.__jg.battle.finish("lose")
+  for (let i = 0; i < 100 && w.__jg.screen !== "result"; i++) { w.__jg.battle?.update(0.05); await wait(20) }
+  await wait(300)
+  log.push("key " + w.Kakao.key + ", uploaded bytes " + uploads.join(","))
+  d.getElementById("b-kakao").click(); await wait(300)
+  const o = sent[0]
+  log.push("sent: " + o.objectType + " | " + o.content.title + " | " + o.content.description + " | " + o.content.imageUrl + " " + o.content.imageWidth + "x" + o.content.imageHeight)
+  const u = new URL(o.buttons[0].link.mobileWebUrl)
+  log.push("button: " + o.buttons[0].title + " -> " + u.origin + u.pathname + " r=" + (u.searchParams.get("r") || "").length + "chars s=" + u.searchParams.get("s") + " | same link " + (o.content.link.webUrl === o.buttons[0].link.webUrl))
+  const rows = [...d.querySelectorAll("#s-result .row")].map((r) => [...r.querySelectorAll(".btn")].map((b) => b.textContent).join(" | "))
+  log.push("rows: " + rows.join(" / "))
+  shots.result = null
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>
