@@ -38,7 +38,7 @@ export function makeCard(art, res) {
   wrap(body, "s9", w - 24, 5).forEach((l, i) => drawText(x, l, 12, 125 + i * 11, { font: "s9", color: K }))
   const s = res.stats
   drawText(x, `반박 ${s.parries}회 (완벽 ${s.perfect}) · A+ ${s.crits}개`, 12, 180, { font: "s7", color: G })
-  drawText(x, `최대 ${s.maxCombo}콤보 · 스킬 ${s.skills}번`, 12, 189, { font: "s7", color: G })
+  drawText(x, `최대 ${s.maxCombo}콤보 · 헛반박 ${s.whiffs || 0}번`, 12, 189, { font: "s7", color: G })
   // 날짜와 도장
   const d = new Date(), date = `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`
   drawText(x, date, 12, 201, { font: "s9", color: K })

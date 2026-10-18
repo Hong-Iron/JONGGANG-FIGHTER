@@ -12,9 +12,9 @@ const C = {
   c: "#d8e6dc", shadow: "#6e6178", A: "#a89e8a", o: "#e8b84a",
 }
 const LV = {
-  easy: { hp: 420, tele: [1.35, 1.05], gap: [[1.8, 2.6], [1.4, 2.0]], dmg: [8, 11], gradHp: 35, quiz: 14 },
-  normal: { hp: 520, tele: [1.15, 0.9], gap: [[1.3, 2.0], [1.0, 1.6]], dmg: [11, 15], gradHp: 50, quiz: 18 },
-  hard: { hp: 640, tele: [0.95, 0.75], gap: [[1.0, 1.5], [0.8, 1.3]], dmg: [14, 19], gradHp: 65, quiz: 22 },
+  easy: { whiff: 2, hp: 420, tele: [1.35, 1.05], gap: [[1.8, 2.6], [1.4, 2.0]], dmg: [8, 11], gradHp: 35, quiz: 14 },
+  normal: { whiff: 3, hp: 520, tele: [1.15, 0.9], gap: [[1.3, 2.0], [1.0, 1.6]], dmg: [11, 15], gradHp: 50, quiz: 18 },
+  hard: { whiff: 5, hp: 640, tele: [0.95, 0.75], gap: [[1.0, 1.5], [0.8, 1.3]], dmg: [14, 19], gradHp: 65, quiz: 22 },
 }
 // 학생 공격 동작: [자세, 길이(초), 맞는 순간]. 빠르게 연타하면 휘두르기 준비 자세를 건너뛴다
 const MOVES = {
@@ -61,7 +61,7 @@ export class Battle {
     this.shakeT = 0; this.shakeMag = 0; this.flash = null
     this.swingT = 0; this.hurtT = 0; this.profHitT = 0; this.lastTap = -1
     this.combo = 0; this.comboT = 0
-    this.stats = { taps: 0, crits: 0, parries: 0, perfect: 0, maxCombo: 0, taken: 0, skills: 0 }
+    this.stats = { taps: 0, crits: 0, parries: 0, perfect: 0, whiffs: 0, maxCombo: 0, taken: 0, skills: 0 }
     this.over = null; this.overT = 0; this.ended = false
     this.armsT = 0
     this.hintT = 6
@@ -124,12 +124,9 @@ export class Battle {
     if (this.parryLock > 0) return
     this.parryPress = this.t
     const a = this.attack
-    if (!a || a.done) { this.parryLock = 0.3; return }
+    if (!a || a.done) return this.whiff("헛반박!")                   // 공격이 없을 때
     const left = a.hitAt - a.e
-    if (left > PARRY_WIN) {                                           // 너무 일찍 누르면 잠깐 못 누른다
-      this.parryLock = 0.35; sfx("early")
-      this.say("너무 일찍!", 60, 176, C.Q); return
-    }
+    if (left > PARRY_WIN) return this.whiff("너무 일찍!")            // 반박할 때가 아직 아닐 때
     const perfect = left <= PERFECT_WIN
     a.done = true; a.parried = true
     this.stats.parries++; if (perfect) this.stats.perfect++
@@ -142,6 +139,16 @@ export class Battle {
     this.damage(perfect ? 30 : 18, { x: 100, y: 96, crit: perfect, noGrade: true })
     if (perfect) this.note(pick(NOTES), true)
     this.endAttack()
+  }
+
+  // 잘못된 때 반박: 수면량이 깎이고 잠깐 못 누른다 (같은 실수로 두 번 깎이지 않게)
+  whiff(msg) {
+    const pen = this.L.whiff
+    this.parryLock = 0.4; this.stats.whiffs++
+    this.sleep = Math.max(0, this.sleep - pen); this.stats.taken += pen
+    this.hurtT = 0.2; this.shake(1, 0.08); this.flash = { t: 0.08, color: C.Q }; sfx("early")
+    this.say(`${msg} -${pen} 수면량`, 52, 176, C.X, { font: "b11", outline: C.r, outline2: C.K })
+    if (this.sleep <= 0) this.finish("lose")
   }
 
   skill(i) {

@@ -111,6 +111,7 @@ async function copyLink() {
 // ---------------------------------------------------------------- 전투
 function startBattle() {
   unlock(); onProfText()
+  document.activeElement?.blur?.()                      // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   if (!art) rebuild()
   battle = new Battle({ art, prof, stu, onEnd: endBattle })
   show("battle")
@@ -157,8 +158,9 @@ function logical(e) {
 }
 cv.addEventListener("pointerdown", (e) => { unlock(); if (battle) { e.preventDefault(); battle.pointer(...logical(e)) } })
 window.addEventListener("keydown", (e) => {
-  if (!battle || e.repeat) return
-  if (e.key === " ") e.preventDefault()
+  if (!battle) return
+  if (e.key === " " || e.key === "Enter") e.preventDefault()
+  if (e.repeat) return
   battle.key(e.key)
 })
 
