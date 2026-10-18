@@ -1,7 +1,8 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190714"
-import { sfx } from "./sfx.js?v=202610190714"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190740"
+import { sfx } from "./sfx.js?v=202610190740"
+import { WEAPON, statsOf } from "./parts.js?v=202610190740"
 
 export const W = 180, H = 320
 
@@ -78,6 +79,10 @@ export class Battle {
   constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100 }) {
     this.art = art; this.prof = prof; this.stu = stu; this.onEnd = onEnd; this.onPause = onPause
     this.stage = stage
+    this.W = WEAPON[stu.weapon] || WEAPON.keyboard
+    this.ST = statsOf(stu)
+    this.pet = stu.pet && stu.pet !== "none" ? { kind: stu.pet, t: 4, act: 0 } : null
+    this.burn = 0; this.burnTick = 0
     const L = scaled(LV[prof.level] || LV.normal, stage)
     this.L = L
     this.t = 0; this.freeze = 0
@@ -119,7 +124,7 @@ export class Battle {
   counter() {
     const a = this.attack
     if (this.cine || !a || a.done) return
-    this.resolveParry(a.e - a.appear <= PERFECT_REACT)
+    this.resolveParry(a.e - a.appear <= PERFECT_REACT + 0.02 * this.ST.speed)
   }
   placeTarget(a) {
     const spot = () => [Math.round(rnd(8, W - TW - 8)), Math.round(rnd(44, ARENA_BOT - TH - 30))]
@@ -139,7 +144,8 @@ export class Battle {
   }
 
   tap() {
-    if (this.cine || this.t - this.lastTap < 0.065) return
+    const rate = Math.max(0.035, this.W.rate * this.ST.fx.rate * (1 - 0.04 * this.ST.speed))   // 무기·타자 속도·세트
+    if (this.cine || this.t - this.lastTap < rate) return
     this.lastTap = this.t
     this.stats.taps++
     this.combo = this.t - this.comboT < 0.45 ? this.combo + 1 : 1; this.comboT = this.t
@@ -147,8 +153,8 @@ export class Battle {
     this.caff = Math.min(100, this.caff + 0.6)
     let mult = this.haste > 0 ? 2 : 1
     if (this.spec > 0) mult *= pick([0, 0.5, 1, 2, 3])
-    const crit = Math.random() < 0.12
-    const dmg = (crit ? 6 : 2) * mult
+    const W = this.W, crit = Math.random() < W.crit + 0.01 * this.ST.luck
+    const dmg = W.dmg * (crit ? (W.critMul || 3) : 1) * mult * this.ST.fx.dmgMul
     sfx("key")
     // 동작 고르기: 콤보 6부터 두 손 내려찍기, 그 전에는 내려치기와 옆으로 휘두르기를 번갈아
     const kind = this.combo >= 6 ? "over" : this.stats.taps % 2 ? "smash" : "sweep"
@@ -163,8 +169,14 @@ export class Battle {
     this.fx.push({ type: "star", x: Math.round(hx), y: Math.round(hy), big: crit, t: 0, delay, life: delay + 0.08 })
     if (this.quiz) this.quiz.n++
     const finisher = this.combo > 0 && this.combo % 12 === 0
-    this.damage(dmg + (finisher ? 15 : 0), { x: hx, y: hy, crit })
-    for (let i = 0; i < (crit ? 3 : 1); i++) this.spawnCap(tx, ty)
+    const shots = W.shots || 1                                          // 피펫: 한 번에 여러 발
+    for (let k = 0; k < shots; k++) {
+      const sx = shots > 1 ? hx + (k - 1) * 12 : hx, sy = shots > 1 ? hy + rnd(-6, 6) : hy
+      if (k) this.fx.push({ type: "star", x: Math.round(sx), y: Math.round(sy), big: false, t: 0, delay, life: delay + 0.08 })
+      this.damage(dmg + (finisher && !k ? 15 : 0), { x: sx, y: sy, crit: crit && !k, noGrade: k > 0 })
+    }
+    for (let i = 0; i < (crit ? 3 : 1) + (shots > 1 ? 2 : 0); i++) this.spawnCap(tx, ty)
+    if (crit) this.weaponFx()
     if (finisher) {
       this.shake(4, 0.2); this.hitstop(0.07); sfx("stamp")
       this.fx.push({ type: "wave", x: tx, y: ty, t: 0, life: 0.3 })
@@ -174,6 +186,16 @@ export class Battle {
       this.stats.crits++; this.hitstop(0.05); this.shake(2, 0.12); sfx("crit")
       if (!this.grad && Math.random() < 0.3) this.say(pick(QUIPS), 120 + rnd(-10, 20), 50, C.X, { font: "s9", outline: C.K })
     } else this.shake(1, 0.06)
+  }
+
+  weaponFx() {
+    const fx = this.W.fx
+    if (fx === "burn") { this.burn = 1.5; this.say("화상!", 112, 70, C.O, { font: "b11", outline: C.K }) }
+    if (fx === "reject") this.fx.push({ type: "stampfx", s: "기각", x: 96, y: 92, t: 0, life: 0.7 })
+    if (fx === "order") {                                               // 판사봉: 교수님 공격이 늦어진다
+      if (this.attack && !this.attack.done) this.attack.hitAt += 0.35; else this.nextAttack += 0.8
+      this.say("정숙!", 112, 70, C.X, { font: "b11", outline: C.K })
+    }
   }
 
   parry() {
@@ -262,7 +284,10 @@ export class Battle {
     this.parryLock = Math.max(0, this.parryLock - dt)
     this.hurtT = Math.max(0, this.hurtT - dt); this.profHitT = Math.max(0, this.profHitT - dt); this.profKnock = Math.max(0, (this.profKnock || 0) - dt)
     this.haste = Math.max(0, this.haste - dt); this.spec = Math.max(0, this.spec - dt)
-    this.caff = Math.min(100, this.caff + dt * 5)
+    this.caff = Math.min(100, this.caff + dt * (5 + this.ST.caff) * this.ST.fx.caffMul)
+    if (this.ST.fx.drain && this.intro <= 0) { this.sleep = Math.max(1, this.sleep - this.ST.fx.drain * dt) }
+    if (this.burn > 0) { this.burn -= dt; this.burnTick -= dt; if (this.burnTick <= 0) { this.burnTick = 0.3; this.damage(1.5, { x: 100 + rnd(-20, 20), y: 110, noGrade: true, quiet: true }) } }
+    if (this.pet && this.intro <= 0) this.updatePet(dt)
     this.trail = Math.max(this.hp, this.trail - dt * 120)
     if (this.phase === 2) this.armsT = Math.min(1, this.armsT + dt * 2)
     if (this.bind > 0) {
@@ -298,11 +323,12 @@ export class Battle {
     a.e += dt
     if (!a.done && a.e >= a.hitAt + 0.05) {                           // 맞았다
       a.done = true
-      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1)
+      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental)
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
       this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz(70)
       this.combo = 0
       this.say("-" + Math.round(dmg) + " 수면량", 40, 168, C.X, { font: "b11", outline: C.U, outline2: C.K, rise: 1 })
+      this.fx.push({ type: "hurtfx", college: this.stu.college, t: 0, life: 0.5 })   // 단과대마다 다른 피격 연출
       if (a.kind === "spec") { this.spec = 8; this.say("스펙 변경: 데미지 무작위 8초", 90, 150, C.N, { font: "s9", outline: C.K }) }
       this.beamT = 0.12
       if (this.sleep <= 0) return this.finish("lose")
@@ -404,8 +430,22 @@ export class Battle {
   hitstop(s) { this.freeze = Math.max(this.freeze, s) }
   shake(m, t) { this.shakeMag = Math.max(this.shakeMag, m); this.shakeT = Math.max(this.shakeT, t) }
   spawnCap(x, y) {
-    const img = this.art[pick(["cap_c", "cap_v", "cap_ctrl", "cap_blank", "cap_blank"])]
-    this.fx.push({ type: "part", img, x, y, vx: rnd(-90, 90), vy: rnd(-150, -70), t: 0, life: 0.9 })
+    const d = this.W.debris
+    if (d === "keycap") { const img = this.art[pick(["cap_c", "cap_v", "cap_ctrl", "cap_blank", "cap_blank"])]; return this.fx.push({ type: "part", img, x, y, vx: rnd(-90, 90), vy: rnd(-150, -70), t: 0, life: 0.9 }) }
+    this.fx.push({ type: "bit", d, x, y, vx: rnd(-100, 100), vy: rnd(-160, -60), t: 0, life: 0.8, r: Math.random() })
+  }
+  // 동료: 6초마다 교수님을 친다 (랩실 붙박이 세트면 두 배)
+  updatePet(dt) {
+    const p = this.pet
+    p.t -= dt; p.act = Math.max(0, p.act - dt)
+    if (p.t <= 0 && !this.over && !this.cine) {
+      p.t = 6; p.act = 0.45
+      const n = 4 * this.ST.fx.petMul
+      this.damage(n, { x: 96 + rnd(-10, 10), y: 120, noGrade: true })
+      const LINE = { rc: "RC카 돌진!", drone: "드론 폭격!", penguin: "sudo 펭귄!", owl: "부엉이 쪼기!", rat: "흰쥐 깨물기!", bust: "석고상 레이저!" }
+      this.say(LINE[p.kind] || "동료 공격!", 140, 186, C.N, { font: "s9", outline: C.K })
+      this.fx.push({ type: "star", x: 100, y: 118, big: false, t: 0, life: 0.1 })
+    }
   }
   shatter() {
     for (let i = 0; i < 7; i++) this.fx.push({ type: "shard", x: 145 + rnd(-20, 20), y: 50 + rnd(-6, 6), vx: rnd(-80, 80), vy: rnd(-80, 10), s: Math.floor(rnd(4, 8)), t: 0, life: 0.5 })
@@ -475,6 +515,7 @@ export class Battle {
     x.drawImage(A[sName], ox - 1 + hurt + lx, oy - 1 + ly + (this.over === "lose" ? Math.min(40, Math.floor(this.overT * 30)) : 0))
     for (const f of this.fx) if (f.type === "smear" && f.t >= f.delay) this.drawSmear(x, f, ox + lx, oy + ly)
     if (this.haste > 0) this.drawChevrons(x, ox, oy)
+    if (this.pet) this.drawPet(x, ox, oy)
     // 공격 예고
     if (this.attack && !this.attack.done) this.drawTelegraph(x, ox, oy)
     if (this.beamT > 0) { x.fillStyle = C.U; this.line(x, 34 + ox, 140 + oy, 44, 189, 2) }
@@ -567,6 +608,49 @@ export class Battle {
     x.fillStyle = C.K; x.fillRect(x0 + 2, y0 + h - 4, w - 4, 2)                        // 남은 시간 막대
     x.fillStyle = decoy ? "#9aa2b5" : rest < 0.3 ? C.U : C.N; x.fillRect(x0 + 2, y0 + h - 4, Math.round((w - 4) * (decoy ? 1 : rest)), 2)
   }
+  drawPet(x, ox, oy) {
+    const p = this.pet, k = p.kind, a = p.act > 0 ? 1 : 0, img = this.art[`pet_${k}_${a}`]
+    if (!img) return
+    let px = 108, py = 206
+    if (k === "rc" || k === "rat") { px = 104 + Math.round(Math.abs(((this.t * 18) % 60) - 30)); py = 214 }   // 오가다 벽에 쿵
+    if (k === "drone") { px = 104; py = 168 + (Math.floor(this.t * 4) % 2) }
+    if (k === "owl") { px = 110; py = 186 + (Math.floor(this.t * 3) % 2) * 2 }
+    if (k === "penguin" && Math.floor(this.t * 6) % 7 === 0) return                                   // 홀로그램 깜빡임
+    if (a) px += 4
+    x.drawImage(img, px + ox, py + oy)
+  }
+  drawBit(x, f) {
+    const X = Math.round(f.x), Y = Math.round(f.y), d = f.d, r = f.r
+    const P = (col, w, h, dx = 0, dy = 0) => { x.fillStyle = col; x.fillRect(X + dx, Y + dy, w, h) }
+    if (d === "spark") { P(r > 0.5 ? "#ffe48a" : C.O, 2, 1); P("#ffffff", 1, 1) }
+    else if (d === "bolt") { P(C.K, 5, 5, -1, -1); P("#d2d6e0", 3, 3); P("#555b6d", 1, 1, 1, 1) }
+    else if (d === "chip") { P(C.K, 6, 5, -1, -1); P(C.n, 4, 3); P(C.o, 4, 1, 0, 2) }
+    else if (d === "page") { P(C.K, 7, 8, -1, -1); P(C.p, 5, 6); P(C.l, 4, 1, 0, 2); P(C.l, 3, 1, 0, 4) }
+    else if (d === "ink") { P("#2f4a9a", 2, 2); if (r > 0.5) P("#1b2a5e", 1, 1, 2, 2) }
+    else if (d === "candle") { const up = r > 0.5; P(C.K, 4, 7, -1, -1); P(up ? C.U : "#3a9a5b", 2, 5); P(C.K, 1, 2, 0, -2) }
+    else if (d === "drop") { P("#4f9be0", 2, 3); P("#c5dcf2", 1, 1) }
+    else if (d === "chalk") { P(C.c, 2, 2); P(C.X, 1, 1) }
+    else if (d === "rock") { P(C.K, 5, 4, -1, -1); P("#8e94a6", 3, 2); P("#555b6d", 2, 1, 1, 1) }
+    else if (d === "paint") { P(["#29b6e8", "#e8296f", "#f2d430", "#1d1622"][Math.floor(r * 4)], 3, 3) }
+    else if (d === "note") { P(C.K, 3, 2, 0, 4); P(C.K, 1, 5, 2, 0); P(C.K, 2, 1, 2, 0) }
+    else if (d === "bamboo") { P("#dcc479", 1, 4); P("#a68d3c", 1, 2, 1, 1) }
+    else P(C.X, 2, 2)
+  }
+  drawHurtFx(x, f) {
+    const t = f.t, col = f.college
+    if (col === "eng" && t < 0.25) {                                   // 블루스크린
+      x.fillStyle = "#1f5fbf"; x.fillRect(0, ARENA_TOP, W, ARENA_BOT - ARENA_TOP)
+      drawText(x, ":(", 12, 60, { font: "l14", bold: true, color: C.X })
+      drawText(x, "문제가 발생했습니다", 12, 84, { font: "s9", color: C.X })
+      drawText(x, "STOP: 0x0000SLEEP", 12, 100, { font: "s7", color: C.X })
+    } else if (col === "hum") {                                        // 빨간 교정 부호 (돼지꼬리)
+      x.fillStyle = C.R
+      for (const [ax, ay] of [[30, 176], [62, 168]]) { this.line(x, ax, ay, ax + 6, ay - 6); this.line(x, ax + 6, ay - 6, ax + 10, ay - 2); this.line(x, ax + 10, ay - 2, ax + 6, ay + 2); this.line(x, ax + 6, ay + 2, ax + 14, ay - 10) }
+      if (t < 0.4) drawText(x, "띄어쓰기!", 40, 150, { font: "s9", color: C.R, outline: C.X })
+    } else if (col === "soc") { const img = textImage("반려", { font: "l14", bold: true, stamp: 8, color: C.U, outline: C.X }); x.drawImage(img, 46 - (img.width >> 1), 170 + (t < 0.06 ? -4 : 0)) }
+    else if (col === "sci") { x.fillStyle = "#7cd65a"; for (let i = 0; i < 9; i++) x.fillRect(30 + i * 5, Math.round(196 - t * 60 - (i % 3) * 6), 3, 3); drawText(x, "치지직", 36, 160, { font: "s9", color: "#7cd65a", outline: C.K }) }
+    else if (col === "art") { x.fillStyle = C.X; for (let i = 0; i < 14; i++) x.fillRect(20 + (i * 37) % 70, Math.round(190 - t * 40 + (i * 13) % 20), 2, 2); if (t < 0.3) drawText(x, "불협화음", 34, 158, { font: "s9", color: C.X, outline: C.K }) }
+  }
   drawSmear(x, f, ox, oy) {
     const p = SMEAR[f.kind]
     x.fillStyle = C.X
@@ -634,6 +718,9 @@ export class Battle {
   }
   drawFx(x, f) {
     if (f.type === "part") x.drawImage(f.img, Math.round(f.x), Math.round(f.y))
+    else if (f.type === "bit") this.drawBit(x, f)
+    else if (f.type === "hurtfx") this.drawHurtFx(x, f)
+    else if (f.type === "stampfx") { const img = textImage(f.s, { font: "l14", bold: true, stamp: -9, color: C.U, outline: C.X, outline2: C.d7 }); x.drawImage(img, f.x - (img.width >> 1), f.y + (f.t < 0.06 ? -4 : 0)) }
     else if (f.type === "shard") { x.fillStyle = C.X; x.fillRect(Math.round(f.x), Math.round(f.y), f.s, 2); x.fillRect(Math.round(f.x), Math.round(f.y), 2, f.s - 2); x.fillStyle = C.K; x.fillRect(Math.round(f.x) + f.s, Math.round(f.y), 1, 2) }
     else if (f.type === "aplus") { if (!(f.t > 0.45 && Math.floor(f.t * 20) % 2)) x.drawImage(this.art.aplus, f.x, f.y + (f.t < 0.05 ? -4 : 0)) }
     else if (f.type === "text" && f.img) { const X = f.center ? Math.round(f.x - f.img.width / 2) : Math.round(f.x); x.drawImage(f.img, Math.max(1, Math.min(W - f.img.width - 1, X)), Math.round(f.y)) }

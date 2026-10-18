@@ -46,8 +46,12 @@ pal({
   p: "#f4efe1", l: "#d3dbe9", Z: "#4f9be0", O: "#e08a2c", 8: "#ff8a3d",   // 노트, 게이지
   U: "#ff3434", D: "#6b4a7a",                                  // 레이저, 다크서클
   2: "#3b4150", 3: "#5d6578", 4: "#22252e", 5: "#9aa2b5",      // 철판
+  "!": "#d2d6e0", "@": "#8e94a6", "$": "#555b6d",              // 금속 (무기, 헤드폰, 서버 랙)
+  "=": "#2f4a9a", "+": "#1b2a5e",                              // 책 표지, 만년필, 첼로 케이스
+  "<": "#dcc479", ">": "#a68d3c", "?": "#6b4428",              // 대나무, 가죽 손잡이
+  "^": "#ffe48a", "~": "#7fe6ff",                              // 달군 인두기 끝, 홀로그램
 })
-ramps("KdsSL", "KPTtu", "KEe", "KijJ", "KYy", "VgG", "KzAa", "KvwW", "KBb", "KHh1", "Kqx", "7rRQ", "4235", "K90If")
+ramps("KdsSL", "KPTtu", "KEe", "KijJ", "KYy", "VgG", "KzAa", "KvwW", "KBb", "KHh1", "Kqx", "7rRQ", "4235", "K90If", "K$@!", "K+=", "?><")
 
 // ================================================================ 강의실
 sprite("room", { w: 180, h: 236 }, (c) => {
@@ -182,7 +186,13 @@ sprite("lectern", { w: 180, h: 236, outline: "K" }, (c) => {
 })
 
 // ================================================================ 학생 (뒷모습)
+// 손에 든 물건은 모두 같은 축(손 → 끝)을 따라 그린다: kb(u, v)에서 u는 손에서 멀어지는 쪽, v는 옆쪽.
+// 그래서 무기를 바꿔도 8가지 자세가 그대로 맞는다.
 const kbAt = (o, d) => (u, v) => [o[0] + d[0] * u - d[1] * v, o[1] + d[1] * u + d[0] * v]
+const STU = {
+  top: ST.top || "jamba", hair: ST.hair || "greasy", hstate: ST.hstate || "none", head: ST.head || "none", neck: ST.neck || "none",
+  wrist: ST.wrist || "none", back: ST.back || "none", weapon: ST.weapon || "keyboard", college: ST.college || "eng",
+}
 function keyboard(c, o, d, len, half) {
   const kb = kbAt(o, d)
   c.poly([...kb(-2, -half), ...kb(len, -half), ...kb(len, half), ...kb(-2, half)].map(Math.round), "q")
@@ -192,7 +202,45 @@ function keyboard(c, o, d, len, half) {
     c.rect(Math.round(x), Math.round(y), 3, 2, col)
   }
 }
-// 팔 한 마디: a→b 사다리꼴 (굵기 wa→wb), 그늘은 오른쪽 아래를 향한 반쪽
+// 무기 하나: 좌표는 [u, v, ...] (u 0 = 손). f는 원근으로 줄어드는 비율, hv는 옆 폭 비율
+function weapon(c, o, d, f, hv, kind) {
+  const kb = kbAt(o, d)
+  const P = (pts, col) => { const out = []; for (let i = 0; i < pts.length; i += 2) out.push(...kb(pts[i] * f, pts[i + 1] * hv)); c.poly(out.map(Math.round), col) }
+  const D = (u, v, col, w = 1, h = 1) => { const [x, y] = kb(u * f, v * hv); c.rect(Math.round(x), Math.round(y), w, h, col) }
+  const bar = (u0, u1, hw, col) => P([u0, -hw, u1, -hw, u1, hw, u0, hw], col)
+  switch (kind) {
+    case "solder": bar(-2, 14, 3, "Z"); bar(14, 16, 2.4, "K"); bar(16, 40, 1, "!"); P([40, -1.4, 47, 0, 40, 1.4], "^"); D(46, 0, "X"); D(44, -3, "^"); D(48, 2, "8"); break
+    case "wrench": bar(-2, 34, 3, "@"); bar(-2, 12, 3.2, "R"); P([34, -9, 50, -9, 50, -3, 42, -3, 42, 3, 50, 3, 50, 9, 34, 9], "!"); D(37, -6, "$", 2, 2); D(37, 5, "$", 2, 2); break
+    case "gpu":
+      bar(-2, 46, 9, "m"); P([-2, 6, 46, 6, 46, 9, -2, 9], "n"); P([8, 9, 38, 9, 38, 10.5, 8, 10.5], "o")
+      for (const cu of [11, 31]) { P([cu - 7, -7, cu + 7, -7, cu + 7, 5, cu - 7, 5], "$"); P([cu - 5, -5, cu + 5, -5, cu + 5, 3, cu - 5, 3], "@"); P([cu - 1, -5, cu + 1, -5, cu + 1, 3, cu - 1, 3], "$"); P([cu - 5, -2, cu + 5, -2, cu + 5, 0, cu - 5, 0], "$") }
+      D(44, -8, "U"); break
+    case "dict": bar(2, 30, 11, "="); bar(2, 7, 11, "+"); bar(28, 30, 10, "p"); D(3, -6, "o", 2, 1); D(3, 0, "o", 2, 1); D(3, 6, "o", 2, 1); D(14, -3, "o", 6, 1); bar(-2, 3, 2, "I"); break
+    case "pen": bar(-2, 10, 2, "K"); bar(10, 12, 2.2, "o"); bar(12, 30, 2, "+"); P([30, -2, 52, 0, 30, 2], "!"); P([34, -0.4, 50, 0, 34, 0.4], "K"); D(20, -1, "=", 4, 1); break
+    case "law": bar(-2, 30, 2, "w"); bar(28, 46, 11, "R"); bar(28, 32, 11, "7"); bar(44, 46, 10, "p"); D(35, -5, "o", 4, 1); D(35, 4, "o", 4, 1); break
+    case "gavel": bar(-2, 28, 2, "v"); bar(24, 40, 9, "W"); bar(24, 27, 9, "o"); bar(37, 40, 9, "o"); P([24, -9, 40, -9, 40, -6, 24, -6], "w"); break
+    case "chart":
+      bar(-2, 8, 2, "K"); bar(8, 10, 6, "o")
+      P([10, -4, 20, -7, 26, -3, 34, -6, 42, 0, 50, 5, 56, 9, 54, 12, 48, 9, 40, 4, 33, -2, 26, 1, 20, -3, 10, 0], "U")
+      for (const [u, v] of [[16, -3], [24, -1], [32, -1], [40, 2], [48, 6]]) D(u, v, "X")
+      P([52, 8, 58, 11, 53, 13], "7"); break
+    case "pipette":
+      bar(-8, -2, 2, "x"); bar(-2, 22, 4, "!"); P([4, -3, 12, -3, 12, 0, 4, 0], "N"); bar(22, 30, 11, "@")
+      for (let k = 0; k < 8; k++) { const v = -10 + k * 2.85; P([30, v - 0.6, 41, v - 0.3, 41, v + 0.3, 30, v + 0.6], "b") }
+      break
+    case "compass":
+      bar(-2, 6, 3, "K"); P([6, -2, 48, -10, 48, -7, 6, 1], "W"); P([6, -1, 48, 7, 48, 10, 6, 2], "W")
+      P([48, 7, 53, 8.5, 48, 10], "c"); P([48, -10, 53, -8.5, 48, -7], "!"); D(26, -1, "o", 2, 2); break
+    case "geohammer":
+      bar(-2, 32, 2, "?"); for (const u of [2, 6, 10]) bar(u, u + 1, 2.4, "K")
+      P([29, -9, 36, -9, 36, 8, 29, 8], "$"); P([29, -9, 32.5, -15, 36, -9], "$"); P([30, 4, 35, 4, 35, 8, 30, 8], "!"); break
+    case "ruler": bar(-2, 64, 2, "!"); bar(-2, 64, 0.4, "@"); for (let u = 2; u < 64; u += 4) D(u, -2, "K", 1, u % 16 === 2 ? 2 : 1); break
+    case "stand": bar(-2, 48, 1, "K"); P([44, -12, 54, -12, 54, 12, 44, 12], "m"); P([45, -10, 52, -10, 52, 10, 45, 10], "p"); for (const v of [-6, -2, 2, 6]) bar(46, 51, 0.3, "K"); D(47, -4, "K", 2, 2); break
+    case "shinai": bar(-2, 62, 2, "<"); bar(-2, 14, 2.2, "p"); bar(58, 62, 2.2, "p"); for (const u of [22, 38, 50]) bar(u, u + 1, 2, ">"); P([14, -2.4, 58, -2.4, 58, -2, 14, -2], "K"); break
+    default: return false
+  }
+  return true
+}
 function seg(c, a, b, wa, wb, col) {
   const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1
   let nx = -dy / L, ny = dx / L
@@ -201,94 +249,228 @@ function seg(c, a, b, wa, wb, col) {
   c.shade([a[0], a[1], b[0], b[1], b[0] + nx * wb, b[1] + ny * wb, a[0] + nx * wa, a[1] + ny * wa].map(Math.round))
 }
 const mid = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
-function sleeveArm(c, sh, el, hd) {
-  seg(c, sh, el, 5.5, 4.6, "y"); seg(c, el, hd, 4.6, 3.6, "y")
-  seg(c, mid(el, hd, 0.78), mid(el, hd, 0.94), 3.9, 3.9, "Y")                        // 소맷부리 고무단
+// 소매 색: 과잠·조끼 안 셔츠는 색 2, 후드티·플란넬은 색 1, 동아리 티는 반팔
+const SLV = { jamba: "y", jamba_up: "y", hoodie: "j", hood_up: "j", flannel: "j", clubtee: "j", vest: "y" }
+function sleeveArm(c, sh, el, hd, right) {
+  const col = SLV[STU.top] || "y", tee = STU.top === "clubtee"
+  if (tee) { seg(c, sh, mid(sh, el, 0.5), 5.8, 5.2, col); seg(c, mid(sh, el, 0.45), el, 4.2, 3.8, "I"); seg(c, el, hd, 3.8, 3.2, "I") }
+  else {
+    seg(c, sh, el, 5.5, 4.6, col); seg(c, el, hd, 4.6, 3.6, col)
+    seg(c, mid(el, hd, 0.78), mid(el, hd, 0.94), 3.9, 3.9, col === "y" ? "Y" : "i")
+    if (STU.top === "flannel") for (const t of [0.3, 0.6]) { seg(c, mid(sh, el, t), mid(sh, el, t + 0.05), 5, 5, "y"); seg(c, mid(el, hd, t), mid(el, hd, t + 0.06), 4, 4, "y") }
+  }
+  if (right) {                                                     // 오른손목 장신구
+    const a = mid(el, hd, 0.56), b = mid(el, hd, 0.74)              // 손에 가리지 않게 팔뚝 쪽에
+    if (STU.wrist === "pas") { seg(c, a, b, 4.4, 4.4, "x"); seg(c, mid(el, hd, 0.3), mid(el, hd, 0.42), 4.4, 4.4, "x") }
+    if (STU.wrist === "brace") seg(c, mid(el, hd, 0.46), b, 4.7, 4.7, "m")
+    if (STU.wrist === "watch") { seg(c, a, b, 4.2, 4.2, "K"); const [x, y] = mid(a, b, 0.5).map(Math.round); c.rect(x - 2, y - 2, 5, 5, "$"); c.px(x - 1, y - 1, "U"); c.px(x + 1, y - 1, "U"); c.px(x, y + 1, "U") }
+    if (STU.wrist === "bands") { seg(c, mid(el, hd, 0.52), mid(el, hd, 0.56), 4.3, 4.3, "U"); seg(c, mid(el, hd, 0.6), mid(el, hd, 0.64), 4.3, 4.3, "N"); seg(c, mid(el, hd, 0.68), mid(el, hd, 0.72), 4.3, 4.3, "Z") }
+  }
   const [x, y] = hd.map(Math.round)
   c.poly([x - 4, y - 1, x - 2, y - 4, x + 3, y - 4, x + 4, y, x + 2, y + 4, x - 3, y + 4], "I"); c.shade([x + 1, y - 4, x + 3, y - 4, x + 4, y, x + 2, y + 4, x, y + 4])
 }
 const nrm = (x, y) => { const l = Math.hypot(x, y); return [x / l, y / l] }
-// 공격 동작: R=오른팔(어깨, 팔꿈치, 손), L=왼팔(없으면 내린 팔), kb=[시작점, 방향, 길이, 반폭]
+// 자세: R=오른팔(어깨, 팔꿈치, 손), L=왼팔(없으면 내린 팔), kb=[손 위치, 방향, 길이, 반폭], two=두 손으로 가운데를 잡음
 const POSES = {
+  idle: { R: [[78, 220], [102, 214], [89, 194]], kb: [[86, 194], [0.894, -0.447], 60, 9] },
   windup: { R: [[78, 219], [101, 203], [93, 184]], kb: [[92, 186], nrm(0.42, -0.91), 48, 8] },
   smash: { R: [[78, 219], [94, 198], [100, 178]], kb: [[88, 172], nrm(0.99, -0.12), 50, 6] },
   follow: { R: [[76, 218], [62, 206], [50, 200]], kb: [[54, 200], nrm(-0.93, 0.36), 44, 7] },
   sweepA: { R: [[78, 219], [104, 210], [118, 200]], kb: [[114, 201], nrm(0.96, -0.28), 46, 7] },
   sweepB: { R: [[76, 218], [66, 202], [56, 192]], kb: [[60, 192], nrm(-1, -0.05), 56, 6] },
-  overUp: { L: [[22, 219], [26, 196], [38, 174]], R: [[78, 219], [74, 196], [62, 174]], kb: [[30, 170], [1, 0], 42, 7] },
-  overDown: { L: [[22, 219], [24, 202], [36, 187]], R: [[78, 219], [76, 202], [64, 187]], kb: [[30, 184], [1, 0], 42, 6] },
+  overUp: { L: [[22, 219], [26, 196], [38, 174]], R: [[78, 219], [74, 196], [62, 174]], kb: [[30, 170], [1, 0], 42, 7], two: true },
+  overDown: { L: [[22, 219], [24, 202], [36, 187]], R: [[78, 219], [76, 202], [64, 187]], kb: [[30, 184], [1, 0], 42, 6], two: true },
+}
+// 무기 길이(u 최대). 두 손 자세에서 가운데를 맞추는 데 쓴다
+const WLEN = { solder: 47, wrench: 50, gpu: 46, dict: 30, pen: 52, law: 46, gavel: 40, chart: 58, pipette: 41, compass: 53, geohammer: 36, ruler: 64, stand: 54, shinai: 62 }
+function heldItem(c, P) {
+  const [o, d, len, half] = P.kb
+  if (STU.weapon === "keyboard" || !WLEN[STU.weapon]) return keyboard(c, o, d, len, half)
+  const f = len / 60, hv = half / 9
+  let origin = o
+  if (P.two) { const mid0 = o[0] + d[0] * len / 2, mid1 = o[1] + d[1] * len / 2; origin = [mid0 - d[0] * WLEN[STU.weapon] * f / 2, mid1 - d[1] * WLEN[STU.weapon] * f / 2] }
+  weapon(c, origin, d, f, hv, STU.weapon)
+}
+// 등 뒤 물건: 몸보다 뒤에 그리는 큰 것(behind)과 몸 위에 메는 것(front)
+function backItem(c, layer) {
+  const b = STU.back
+  if (layer === "behind") {
+    if (b === "canvas") { c.rect(4, 150, 92, 86, "W"); c.rect(7, 153, 86, 80, "p"); c.line(7, 153, 93, 233, "l"); c.line(93, 153, 7, 233, "l"); c.rect(4, 150, 92, 3, "w") }
+    if (b === "cello") { c.poly([58, 140, 70, 140, 72, 166, 84, 180, 86, 236, 44, 236, 46, 180, 56, 166], "+"); c.poly([58, 140, 64, 140, 62, 166, 50, 182, 50, 236, 44, 236, 46, 180, 56, 166], "="); c.rect(60, 146, 8, 4, "o") }
+    if (b === "tube") { c.poly([12, 236, 18, 236, 82, 170, 76, 166], "m"); c.poly([76, 166, 82, 170, 86, 165, 80, 161], "R"); c.poly([12, 236, 18, 236, 22, 232, 16, 230], "R") }
+    return
+  }
+  if (b === "tactical") {
+    c.line(36, 214, 30, 236, "K"); c.line(64, 214, 70, 236, "K")
+    c.poly([30, 212, 70, 212, 74, 236, 26, 236], "$"); c.poly([32, 212, 68, 212, 66, 220, 34, 220], "@")
+    for (const y of [224, 229, 234]) c.hline(31, y, 39, "K")
+    c.rect(44, 222, 12, 8, "@"); c.hline(44, 222, 12, "!")
+  }
+  if (b === "rack") {
+    c.poly([32, 208, 68, 208, 70, 236, 30, 236], "m")
+    for (let y = 211; y < 236; y += 6) { c.hline(33, y, 34, "M"); c.px(36, y + 2, "N"); c.px(39, y + 2, y % 12 ? "N" : "U") }
+    c.rect(52, 214, 12, 12, "$"); c.line(52, 214, 63, 225, "@"); c.line(63, 214, 52, 225, "@")
+  }
+  if (b === "ecobag") { c.line(66, 214, 84, 226, "p"); c.poly([78, 222, 94, 222, 96, 236, 76, 236], "p"); c.rect(80, 218, 3, 6, "R"); c.rect(84, 217, 3, 7, "="); c.rect(88, 219, 3, 5, "N") }
+}
+// 등판: 마크 하나(9×9, 각진 도형) + 글씨(main.js가 갈무리 1배 픽셀로 찍어 OPT.stu.printRows로 넘긴다)
+const PRINT = ST.print || "college", ROWS = Array.isArray(ST.printRows) ? ST.printRows : []
+function emblem(c, x, y, kind, col) {
+  if (kind === "eng") { c.poly([x + 2, y, x + 6, y, x + 8, y + 2, x + 8, y + 6, x + 6, y + 8, x + 2, y + 8, x, y + 6, x, y + 2], col); c.rect(x + 3, y + 3, 3, 3, "i"); c.rect(x + 3, y - 1, 3, 1, col); c.rect(x + 3, y + 9, 3, 1, col); c.rect(x - 1, y + 3, 1, 3, col); c.rect(x + 9, y + 3, 1, 3, col) }
+  else if (kind === "hum") { c.poly([x, y + 1, x + 4, y + 2, x + 4, y + 8, x, y + 7], col); c.poly([x + 5, y + 2, x + 9, y + 1, x + 9, y + 7, x + 5, y + 8], col); c.vline(x + 4, y + 2, 7, "i") }
+  else if (kind === "soc") { c.vline(x + 4, y, 9, col); c.hline(x, y + 2, 9, col); c.poly([x - 1, y + 6, x + 1, y + 3, x + 3, y + 6], col); c.poly([x + 5, y + 6, x + 7, y + 3, x + 9, y + 6], col); c.hline(x + 2, y + 8, 5, col) }
+  else if (kind === "sci") { c.rect(x + 3, y, 3, 4, col); c.poly([x + 3, y + 4, x + 6, y + 4, x + 9, y + 9, x, y + 9], col); c.hline(x + 2, y + 6, 5, "i") }
+  else if (kind === "art") { c.poly([x, y + 2, x + 3, y, x + 8, y, x + 9, y + 4, x + 7, y + 6, x + 4, y + 9, x, y + 7], col); for (const [dx, dy, k] of [[2, 2, "U"], [5, 2, "N"], [6, 4, "Z"]]) c.px(x + dx, y + dy, k) }
+  else { c.poly([x, y, x + 9, y, x + 9, y + 5, x + 4, y + 9, x, y + 5], col); c.rect(x + 3, y + 2, 3, 3, "i") }   // 대학 문장 (방패)
+}
+function backPrint(c, col) {
+  if (PRINT === "none") return
+  const hasRows = ROWS.length && ROWS[0].length
+  const tw = hasRows ? ROWS[0].length : 0, th = ROWS.length
+  if (PRINT === "jersey") { if (hasRows) { c.grid(50 - (tw >> 1), 217 + 1, ROWS.join("\n").replace(/o/g, "i")); c.grid(50 - (tw >> 1), 217, ROWS.join("\n").replace(/o/g, col)) } return }
+  // 깃 아래 한 줄: [마크] 글씨. 후드티는 접힌 모자가 등을 덮어 글씨만 아래에
+  const hoodie = STU.top === "hoodie", mark = PRINT === "crest" ? "crest" : STU.college
+  const total = (hoodie ? 0 : 12) + tw, x0 = 50 - (total >> 1), y = hoodie ? 236 - th - 1 : 221 + Math.max(0, (11 - th) >> 1)
+  if (!hoodie) emblem(c, x0 + 1, 221 + 1, mark, col)
+  if (hasRows) { const x = x0 + (hoodie ? 0 : 12); c.grid(x, y + 1, ROWS.join("\n").replace(/o/g, "i")); c.grid(x, y, ROWS.join("\n").replace(/o/g, col)) }
 }
 function drawStudent(c, pose) {
-  const P = POSES[pose]
-  if (!P) keyboard(c, [86, 194], [0.894, -0.447], 60, 9)
-  else keyboard(c, ...P.kb)
-  c.poly([12, 236, 16, 221, 34, 214, 66, 214, 84, 219, 92, 236], "j")
-  c.shade([12, 236, 16, 221, 26, 217, 30, 236]); c.light([36, 214, 64, 214, 60, 218, 40, 218])
-  c.text(39, 224, "ENG", "o"); c.hline(38, 230, 15, "o")
-  if (P && P.L) sleeveArm(c, ...P.L)
-  else { c.poly([10, 236, 14, 222, 26, 216, 24, 236], "y"); c.shade([10, 236, 14, 222, 18, 220, 16, 236]) }
-  const no = String(ST.no ?? "19").replace(/[^0-9]/g, "").slice(0, 2) || "19"
-  if (!P) {
-    c.poly([76, 215, 101, 209, 103, 219, 79, 225], "y")
-    c.poly([98, 216, 105, 212, 94, 195, 87, 199], "y")
-    c.shade([79, 225, 103, 219, 102, 216, 80, 222]); c.shade([105, 212, 94, 195, 91, 197, 101, 214])
-    c.poly([87, 199, 94, 195, 95, 197, 88, 201], "Y")
-    c.text(83, 215, no, "j")
-    c.poly([83, 190, 91, 188, 95, 192, 92, 198, 85, 198, 81, 194], "I"); c.shade([91, 188, 95, 192, 92, 198, 89, 198])
-  } else {
-    sleeveArm(c, ...P.R)
-    const [tx, ty] = mid(P.R[0], P.R[1], 0.5).map(Math.round)
-    if (!P.L) c.text(tx - 4, ty - 3, no, "j")
+  const P = POSES[pose] || POSES.idle
+  backItem(c, "behind")
+  heldItem(c, P)
+  const top = STU.top
+  // 몸통
+  c.poly([12, 236, 16, 221, 34, 214, 66, 214, 84, 219, 92, 236], top === "flannel" || top === "hoodie" || top === "hood_up" || top === "clubtee" || top === "vest" ? "j" : "j")
+  if (top === "flannel") {                                           // 체크무늬: 색 2의 굵은 줄 + 어두운 가는 줄
+    c.clip([12, 236, 16, 221, 34, 214, 66, 214, 84, 219, 92, 236], () => {
+      for (let x = 14; x < 92; x += 10) { c.rect(x, 214, 3, 22, "y"); c.vline(x + 6, 214, 22, "i") }
+      for (let y = 218; y < 236; y += 9) { c.hline(10, y, 84, "y"); c.hline(10, y + 1, 84, "y"); c.hline(10, y + 5, 84, "i") }
+    })
   }
-  c.rect(44, 210, 12, 6, "0"); c.rect(34, 214, 32, 4, "y"); c.hline(34, 216, 32, "j")
-  c.poly([30, 198, 34, 196, 34, 208, 31, 207], "I"); c.poly([70, 198, 66, 196, 66, 208, 69, 207], "0")
-  const hair = ST.hair || "greasy"
-  if (hair === "buzz") {
+  if (top === "vest") { for (let y = 219; y < 236; y += 5) c.line(16, y, 88, y + 1, "i"); c.line(50, 214, 50, 236, "!") }
+  c.shade([12, 236, 16, 221, 26, 217, 30, 236]); c.light([36, 214, 64, 214, 60, 218, 40, 218])
+  if (top !== "flannel") backPrint(c, top === "clubtee" || top === "hoodie" || top === "hood_up" ? "y" : "o")
+  if (top === "hoodie") { c.poly([32, 214, 68, 214, 62, 228, 38, 228], "i"); c.poly([36, 214, 64, 214, 59, 224, 41, 224], "J"); c.line(44, 228, 43, 235, "y"); c.line(56, 228, 57, 235, "y") }
+  backItem(c, "front")
+  if (P.L) sleeveArm(c, ...P.L, false)
+  else if (top === "clubtee") { c.poly([12, 228, 14, 222, 26, 216, 26, 226], "j"); c.poly([10, 236, 12, 228, 26, 226, 24, 236], "I") }
+  else { c.poly([10, 236, 14, 222, 26, 216, 24, 236], SLV[top] || "y"); c.shade([10, 236, 14, 222, 18, 220, 16, 236]) }
+  sleeveArm(c, ...P.R, true)
+  const no = String(ST.no ?? "19").replace(/[^0-9]/g, "").slice(0, 2) || "19"
+  if (!P.L && top.startsWith("jamba")) { const [tx, ty] = mid(P.R[0], P.R[1], 0.5).map(Math.round); c.text(tx - 4, ty - 3, no, "j") }
+  // 목과 깃
+  c.rect(44, 210, 12, 6, "0")
+  if (top === "jamba") { c.rect(34, 214, 32, 4, "y"); c.hline(34, 216, 32, "j") }
+  if (top === "jamba_up") { c.poly([34, 218, 36, 206, 64, 206, 66, 218], "y"); c.hline(35, 212, 30, "j"); c.hline(35, 215, 30, "j") }
+  if (top === "flannel" || top === "vest") { c.poly([38, 214, 50, 220, 62, 214, 58, 210, 50, 214, 42, 210], top === "vest" ? "y" : "J") }
+  if (top === "clubtee") c.poly([38, 213, 62, 213, 58, 218, 42, 218], "J")
+  if (STU.neck === "lanyard") { c.line(40, 216, 45, 211, "U"); c.line(55, 211, 60, 216, "U"); c.hline(45, 211, 10, "U") }
+  // 머리
+  const hood = top === "hood_up"
+  if (!hood) { c.poly([30, 198, 34, 196, 34, 208, 31, 207], "I"); c.poly([70, 198, 66, 196, 66, 208, 69, 207], "0") }
+  const hair = STU.hair
+  if (hood) {
+    c.poly([30, 214, 28, 196, 34, 182, 50, 176, 66, 182, 72, 196, 70, 214], "j"); c.poly([34, 186, 50, 180, 66, 186, 64, 196, 50, 192, 36, 196], "J")
+    c.line(50, 178, 50, 212, "i"); c.shade([50, 178, 66, 182, 72, 196, 70, 214, 50, 214])
+  } else if (hair === "buzz") {
     c.poly([35, 204, 35, 190, 40, 184, 60, 184, 65, 190, 65, 204, 60, 211, 40, 211], "H")
     for (let k = 0; k < 14; k++) c.px(37 + (k * 7) % 27, 187 + (k * 5) % 20, "h")
     c.poly([40, 184, 52, 184, 38, 196, 35, 196, 35, 190], "h")
   } else {
     c.poly([34, 204, 34, 189, 40, 182, 60, 182, 66, 189, 66, 204, 60, 213, 40, 213], "H")
-    c.poly([37, 185, 34, 179, 42, 183], "H"); c.poly([44, 183, 45, 176, 50, 182], "H")
-    c.poly([53, 182, 58, 177, 59, 183], "H"); c.poly([62, 185, 68, 183, 65, 190], "H")
-    c.line(56, 182, 60, 173, "h"); c.line(60, 173, 63, 172, "h")
-    c.poly([40, 182, 50, 182, 38, 197, 34, 197, 34, 189], "h")
-    c.line(38, 189, 44, 184, "1"); c.line(36, 193, 39, 190, "1"); c.line(45, 186, 48, 183, "1")
-    c.line(42, 197, 47, 203, "H"); c.line(50, 190, 54, 199, "h"); c.line(58, 192, 62, 201, "h")
-    if (hair === "pudding") { c.poly([44, 182, 56, 182, 54, 192, 46, 192], "v"); c.line(50, 182, 50, 194, "K") }   // 뿌리가 자란 탈색모
+    if (hair === "capmark") {                                       // 모자 자국: 납작한 정수리와 눌린 띠
+      c.poly([36, 186, 40, 182, 60, 182, 64, 186], "h"); c.hline(34, 192, 33, "K"); c.hline(34, 193, 33, "1")
+      c.poly([33, 196, 30, 192, 36, 194], "H"); c.poly([67, 196, 70, 192, 64, 194], "H")
+    } else {
+      c.poly([37, 185, 34, 179, 42, 183], "H"); c.poly([44, 183, 45, 176, 50, 182], "H")
+      c.poly([53, 182, 58, 177, 59, 183], "H"); c.poly([62, 185, 68, 183, 65, 190], "H")
+      c.line(56, 182, 60, 173, "h"); c.line(60, 173, 63, 172, "h")
+      c.poly([40, 182, 50, 182, 38, 197, 34, 197, 34, 189], "h")
+      c.line(38, 189, 44, 184, "1"); c.line(36, 193, 39, 190, "1"); c.line(45, 186, 48, 183, "1")
+      c.line(42, 197, 47, 203, "H"); c.line(50, 190, 54, 199, "h"); c.line(58, 192, 62, 201, "h")
+    }
+    if (hair === "pudding") { c.poly([44, 182, 56, 182, 54, 192, 46, 192], "v"); c.line(50, 182, 50, 194, "K") }
+    if (hair === "bun") { c.poly([42, 176, 46, 170, 54, 170, 58, 176, 56, 182, 44, 182], "H"); c.poly([44, 174, 48, 171, 52, 171, 50, 176], "h"); c.line(40, 168, 62, 182, "o"); c.px(40, 168, "R"); c.px(62, 182, "K") }
   }
-  c.shade([60, 182, 66, 189, 66, 204, 60, 213, 54, 213, 60, 196]); c.shade([34, 207, 66, 207, 60, 213, 40, 213])
+  if (!hood && STU.hstate === "static") for (const [x0, y0, x1, y1] of [[36, 186, 28, 176], [44, 182, 40, 168], [52, 180, 54, 166], [60, 183, 68, 170], [65, 190, 74, 184]]) c.line(x0, y0, x1, y1, "h")
+  if (!hood && STU.hstate === "gray") for (const [x0, y0, x1, y1] of [[40, 190, 44, 200], [52, 186, 55, 196], [58, 196, 60, 204], [46, 204, 48, 210]]) c.line(x0, y0, x1, y1, "!")
+  if (!hood) { c.shade([60, 182, 66, 189, 66, 204, 60, 213, 54, 213, 60, 196]); c.shade([34, 207, 66, 207, 60, 213, 40, 213]) }
+  // 머리에 쓰는 것
+  if (STU.head === "phones") {
+    for (const [x0, y0, x1, y1] of [[33, 200, 35, 186], [35, 186, 42, 179], [42, 179, 58, 179], [58, 179, 65, 186], [65, 186, 67, 200]]) { c.line(x0, y0, x1, y1, "$"); c.line(x0 + 1, y0, x1 + 1, y1, "$") }
+    c.poly([27, 194, 34, 192, 35, 208, 28, 208], "@"); c.poly([73, 194, 66, 192, 65, 208, 72, 208], "@")
+    c.rect(28, 195, 2, 12, "$"); c.rect(70, 195, 2, 12, "$"); c.px(30, 196, "!"); c.px(71, 196, "!")
+  }
+  if (STU.head === "bone") { c.line(32, 204, 50, 208, "@"); c.line(50, 208, 68, 204, "@"); c.rect(30, 198, 3, 5, "$"); c.rect(67, 198, 3, 5, "$") }
 }
-for (const pose of ["idle", ...Object.keys(POSES)]) sprite("stu_" + pose, { w: 180, h: 236, outline: "K" }, (c) => drawStudent(c, pose))
-sheet("stu_poses", ["stu_idle", ...Object.keys(POSES).map((p) => "stu_" + p)], { cols: 4, pad: 0 })
+for (const pose of Object.keys(POSES)) sprite("stu_" + pose, { w: 180, h: 236, outline: "K" }, (c) => drawStudent(c, pose))
 
 // ================================================================ 학생 얼굴 초상화 (34×34): 다크서클 1~5단계 × 표정
+const FACE = { eyes: ST.eyes || "tired", red: ST.red === "yes", mouth: ST.mouth || "none" }
 function drawPortrait(c, lv, mood) {
   c.rect(0, 0, 34, 34, "K"); c.rect(1, 1, 32, 32, mood === "hurt" ? "Q" : "b")
+  const hood = STU.top === "hood_up"
+  if (hood) c.poly([3, 33, 3, 12, 8, 4, 26, 4, 31, 12, 31, 33], "j")
   c.poly([8, 14, 12, 9, 22, 9, 26, 14, 27, 25, 22, 31, 12, 31, 7, 25], "I")
-  c.poly([4, 18, 7, 17, 7, 25, 5, 24], "I"); c.poly([30, 18, 27, 17, 27, 25, 29, 24], "0")
+  if (!hood) { c.poly([4, 18, 7, 17, 7, 25, 5, 24], "I"); c.poly([30, 18, 27, 17, 27, 25, 29, 24], "0") }
   c.shade([23, 9, 26, 14, 27, 25, 22, 31, 20, 31, 24, 20])
-  const hair = ST.hair || "greasy"
-  if (hair === "buzz") c.poly([7, 14, 8, 8, 13, 5, 21, 5, 26, 8, 27, 14, 23, 10, 11, 10], "H")
+  const hair = STU.hair
+  if (hood) c.poly([8, 13, 9, 8, 25, 8, 26, 13, 21, 11, 13, 11], "H")
+  else if (hair === "buzz") c.poly([7, 14, 8, 8, 13, 5, 21, 5, 26, 8, 27, 14, 23, 10, 11, 10], "H")
   else {
     c.poly([6, 16, 6, 9, 11, 5, 23, 5, 28, 9, 28, 16, 25, 12, 20, 14, 15, 11, 10, 14], "H")
-    c.poly([7, 10, 3, 4, 11, 6], "H"); c.poly([16, 6, 19, 1, 21, 6], "H"); c.poly([24, 7, 31, 3, 28, 11], "H")
+    if (hair === "capmark") { c.poly([7, 9, 11, 5, 23, 5, 27, 9], "h"); c.hline(6, 10, 23, "K") }
+    else { c.poly([7, 10, 3, 4, 11, 6], "H"); c.poly([16, 6, 19, 1, 21, 6], "H"); c.poly([24, 7, 31, 3, 28, 11], "H") }
     if (hair === "pudding") c.poly([13, 5, 21, 5, 19, 8, 15, 8], "v")
+    if (hair === "bun") { c.poly([13, 4, 15, 1, 20, 1, 22, 4], "H"); c.line(10, 1, 25, 5, "o") }
+    if (STU.hstate === "static") { c.line(6, 9, 2, 2, "h"); c.line(28, 9, 32, 2, "h"); c.line(17, 5, 17, 0, "h") }
+    if (STU.hstate === "gray") { c.px(12, 7, "!"); c.px(20, 6, "!"); c.px(25, 10, "!") }
   }
-  if (mood === "win") { c.line(10, 20, 12, 18, "K"); c.line(12, 18, 14, 20, "K"); c.line(20, 20, 22, 18, "K"); c.line(22, 18, 24, 20, "K"); c.hline(14, 27, 6, "K"); c.hline(15, 28, 4, "7") }
-  else if (mood === "hurt") { c.line(10, 18, 14, 21, "K"); c.line(14, 18, 10, 21, "K"); c.line(20, 18, 24, 21, "K"); c.line(24, 18, 20, 21, "K"); c.rect(15, 26, 4, 3, "7") }
-  else {
-    c.hline(10, 19, 5, "K"); c.hline(20, 19, 5, "K")
-    if (lv >= 4) { c.hline(10, 20, 5, "D"); c.hline(20, 20, 5, "D") }
-    c.rect(15, 27, 4, lv >= 4 ? 3 : 2, "d")
-  }
+  if (STU.head === "phones") { c.hline(7, 4, 21, "$"); c.line(6, 5, 4, 14, "$"); c.line(28, 5, 30, 14, "$"); c.rect(2, 15, 4, 9, "@"); c.rect(28, 15, 4, 9, "@") }
+  // 눈
+  const eyeL = 10, eyeR = 20
+  if (mood === "win") { c.line(10, 20, 12, 18, "K"); c.line(12, 18, 14, 20, "K"); c.line(20, 20, 22, 18, "K"); c.line(22, 18, 24, 20, "K") }
+  else if (mood === "hurt") { c.line(10, 18, 14, 21, "K"); c.line(14, 18, 10, 21, "K"); c.line(20, 18, 24, 21, "K"); c.line(24, 18, 20, 21, "K") }
+  else if (FACE.eyes === "dead") { for (const x of [eyeL, eyeR]) { c.rect(x, 18, 5, 3, "X"); c.px(x + (x === eyeL ? 0 : 4), 19, "K"); c.hline(x, 17, 5, "K") } }
+  else if (FACE.eyes === "crazy") { for (const x of [eyeL, eyeR]) { c.rect(x, 17, 5, 4, "X"); c.rect(x + 2, 18, 2, 2, "U"); c.px(x + 2, 18, "K") } }
+  else if (FACE.eyes === "calc") { for (const x of [eyeL, eyeR]) { c.rect(x, 17, 5, 4, "n"); c.text(x + 1, 16, x === eyeL ? "4" : "5", "N") } }
+  else { c.hline(10, 19, 5, "K"); c.hline(20, 19, 5, "K"); if (lv >= 4) { c.hline(10, 20, 5, "D"); c.hline(20, 20, 5, "D") } }
+  if (FACE.eyes === "tears" && mood !== "win") { c.rect(9, 21, 2, 3, "Z"); c.rect(24, 21, 2, 4, "Z"); c.px(24, 25, "b") }
+  if (FACE.red && mood === "idle" && FACE.eyes !== "calc") { c.px(eyeL, 18, "U"); c.px(eyeR + 4, 18, "U") }
   for (let k = 0; k < Math.min(lv, 5); k++) {                         // 다크서클: 단계마다 한 줄씩 아래로
-    const y = 21 + k, wv = Math.max(2, 5 - Math.floor(k / 2))
+    const y = 21 + k + (FACE.eyes === "crazy" ? 1 : 0), wv = Math.max(2, 5 - Math.floor(k / 2))
     c.hline(10, y, wv, "D"); c.hline(20, y, wv, "D")
   }
-  if (lv >= 3) c.poly([28, 13, 29, 15, 28, 17, 27, 15], "b")
+  // 입
+  const m = FACE.mouth
+  if (m === "mask" || m === "gasmask") {
+    c.poly([7, 23, 27, 23, 26, 30, 21, 32, 13, 32, 8, 30], m === "gasmask" ? "$" : "m")
+    if (m === "gasmask") { c.rect(9, 26, 5, 5, "@"); c.rect(20, 26, 5, 5, "@"); c.rect(14, 28, 6, 4, "m"); c.px(11, 28, "K"); c.px(22, 28, "K") }
+    else { c.line(7, 23, 4, 20, "x"); c.line(27, 23, 30, 20, "x") }
+  } else {
+    if (mood === "win") { c.hline(14, 27, 6, "K"); c.hline(15, 28, 4, "7") }
+    else if (mood === "hurt") c.rect(15, 26, 4, 3, "7")
+    else c.rect(15, 27, 4, lv >= 4 ? 3 : 2, "d")
+    if (m === "chinmask") { c.poly([9, 29, 25, 29, 23, 33, 11, 33], "x"); c.line(9, 29, 5, 24, "x"); c.line(25, 29, 29, 24, "x") }
+    if (m === "patch") c.rect(19, 26, 3, 3, "p")
+    if (m === "pen") { c.line(16, 28, 30, 25, "=") ; c.px(30, 25, "!") }
+    if (m === "bar") { c.poly([14, 27, 22, 28, 28, 25, 26, 29, 15, 30], "O"); c.hline(20, 28, 5, "8") }
+    if (m === "nose") { c.rect(17, 22, 3, 4, "x"); c.px(15, 25, "U"); c.px(15, 26, "U") }
+  }
+  if (lv >= 3 && FACE.eyes !== "tears") c.poly([28, 13, 29, 15, 28, 17, 27, 15], "b")
 }
 for (let lv = 1; lv <= 5; lv++) for (const mood of ["idle", "hurt", "win"]) sprite(`por_${lv}_${mood}`, { w: 34, h: 34 }, (c) => drawPortrait(c, lv, mood))
+
+// ================================================================ 동료 (학생 옆에서 가끔 교수님을 친다): 2장씩 (가만히, 공격)
+const PETS = {
+  rc: (c, a) => { c.poly([2, 10, 4, 5, 16, 5, 20, 10], "U"); c.rect(3, 10, 18, 3, "7"); c.rect(3, 12, 4, 4, "K"); c.rect(16, 12, 4, 4, "K"); c.rect(8, 6, 6, 3, "b"); if (a) { c.line(21, 8, 25, 6, "^"); c.line(21, 11, 26, 11, "^") } },
+  drone: (c, a) => { c.rect(6, 7, 12, 5, "$"); c.rect(9, 8, 6, 2, "N"); c.hline(0, 5, 8, "@"); c.hline(16, 5, 8, "@"); c.rect(3, 3, 3, 2, "!"); c.rect(18, 3, 3, 2, "!"); c.rect(10, 12, 4, 2, "K"); if (a) c.line(12, 14, 12, 19, "U") },
+  penguin: (c, a) => { c.poly([7, 2, 15, 2, 18, 8, 18, 17, 4, 17, 4, 8], "~"); c.poly([8, 7, 14, 7, 15, 16, 7, 16], "X"); c.rect(8, 4, 2, 2, "K"); c.rect(12, 4, 2, 2, "K"); c.poly([10, 6, 13, 6, 11, 8], "O"); for (let y = 3; y < 17; y += 3) c.hline(4, y, 15, "b"); if (a) c.text(18, 1, "$", "~") },
+  owl: (c, a) => { c.poly([4, 4, 8, 1, 12, 4, 16, 1, 20, 4, 20, 16, 12, 19, 4, 16], "p"); c.line(4, 4, 20, 16, "l"); c.line(20, 4, 4, 16, "l"); c.rect(7, 7, 3, 3, "K"); c.rect(14, 7, 3, 3, "K"); c.poly([11, 10, 13, 10, 12, 13], "O"); if (a) { c.line(20, 8, 24, 6, "p"); c.line(20, 10, 25, 10, "p") } },
+  rat: (c, a) => { c.poly([4, 10, 7, 6, 15, 6, 19, 10, 15, 13, 5, 13], "X"); c.rect(16, 7, 2, 2, "U"); c.rect(14, 4, 3, 3, "Q"); c.line(4, 11, 0, 14, "Q"); c.line(0, 14, 0, 17, "Q"); c.text(1, 14, "19", "K"); if (a) { c.line(19, 10, 23, 8, "X"); c.line(19, 11, 23, 12, "X") } },
+  bust: (c, a) => { c.poly([6, 2, 14, 2, 17, 7, 17, 13, 14, 16, 18, 20, 2, 20, 6, 16, 3, 13, 3, 7], "x"); c.shade([12, 2, 14, 2, 17, 7, 17, 13, 14, 16, 18, 20, 12, 20]); c.rect(6, 8, 2, 1, "K"); c.rect(12, 8, 2, 1, "K"); c.poly([9, 9, 11, 9, 10, 12], "@"); if (a) { c.line(7, 8, 24, 2, "U"); c.line(13, 8, 26, 4, "U") } },
+}
+for (const [k, fn] of Object.entries(PETS)) for (const a of [0, 1]) sprite(`pet_${k}_${a}`, { w: 28, h: 22, outline: "K" }, (c) => fn(c, a))
 
 // ================================================================ 랩장 (소환수, 정면)
 sprite("grad", { w: 60, h: 90, outline: "K" }, (c) => {
@@ -346,4 +528,4 @@ sprite("ic_push", { w: 28, h: 28 }, (c) => {
 // 미리보기용 (pxl CLI): 기본 꾸미기로 한 장면
 scene("preview", { w: 180, h: 236, bg: "k" },
   stamp("room", 0, 0), stamp("prof_arms", -1, -1), stamp("prof_p2", -1, -1), stamp("lectern", -1, -1),
-  stamp("grad", 116, 150), stamp("stu_smash", -1, -1))
+  stamp("grad", 116, 150), stamp("stu_smash", -1, -1), stamp("pet_drone_1", 104, 196))

@@ -1,9 +1,9 @@
 // pxl 엔진을 브라우저에서 돌려 그림 원본(art/game.px.js)을 꾸미기 선택(OPT)대로 그린다.
-import { Project } from "../vendor/pxl/core/index.js?v=202610190714"
+import { Project } from "../vendor/pxl/core/index.js?v=202610190740"
 
 let SRC = ""
 export async function loadArtSource() {
-  SRC = await (await fetch("art/game.px.js?v=202610190714")).text()
+  SRC = await (await fetch("art/game.px.js?v=202610190740")).text()
 }
 
 const NAMES = [
@@ -11,6 +11,7 @@ const NAMES = [
   "cap_c", "cap_v", "cap_ctrl", "cap_blank", "aplus", "ic_wire", "ic_can", "ic_push",
 ]
 for (let lv = 1; lv <= 5; lv++) for (const m of ["idle", "hurt", "win"]) NAMES.push(`por_${lv}_${m}`)
+for (const p of ["rc", "drone", "penguin", "owl", "rat", "bust"]) NAMES.push(`pet_${p}_0`, `pet_${p}_1`)
 
 // 이미지(0xRRGGBBAA)를 캔버스로
 function toCanvas(img) {

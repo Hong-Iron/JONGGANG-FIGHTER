@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 등판 글씨 6가지, 꽉 채운 장비로 전투 몇 장면 (무기 파편, 동료 공격, 단과대 피격 연출)
+const log = [], shots = {}, f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot(stu) {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify(stu)); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+  const w = f.contentWindow; for (let i = 0; i < 600 && !(w.__jg && w.__jg.art); i++) await wait(50); return w
+}
+const grab = (img, x, y, w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#a89e8a"; g.fillRect(0, 0, w, h); g.drawImage(img, x, y, w, h, 0, 0, w, h); return c.toDataURL() }
+try {
+  const prints = [["college", { college: "eng" }], ["college", { college: "hum" }], ["custom", { printText: "종강기원" }], ["jersey", { no: "24" }], ["crest", {}], ["none", {}]]
+  for (const [i, [pr, extra]] of prints.entries()) { const w = await boot({ print: pr, ...extra }); shots["print" + i] = grab(w.__jg.art.stu_idle, 10, 186, 90, 50) }
+  for (const [i, top] of ["hoodie", "clubtee", "vest"].entries()) { const w = await boot({ top, print: "college", college: "sci" }); shots["top" + i] = grab(w.__jg.art.stu_idle, 10, 186, 90, 50) }
+  const w = await boot({ college: "eng", weapon: "pipette", head: "phones", wrist: "watch", back: "tactical", pet: "drone", eyes: "crazy", mouth: "gasmask", top: "jamba_up", print: "custom", printText: "밤샘" })
+  const d = f.contentDocument, cv = d.getElementById("game")
+  d.getElementById("b-fight").click(); await wait(100)
+  const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99
+  log.push("weapon " + b.W.code + " rate " + b.W.rate + " stats " + JSON.stringify({ m: b.ST.mental, s: b.ST.speed, l: b.ST.luck, c: b.ST.caff, sets: b.ST.sets.map((x) => x.id) }))
+  const hp0 = b.hp; b.lastTap = -9; b.tap(); for (let i = 0; i < 3; i++) b.update(0.02); b.render(cv.getContext("2d")); shots.tap = cv.toDataURL()
+  log.push("pipette one tap dmg " + (hp0 - b.hp).toFixed(1) + ", stars " + b.fx.filter((x) => x.type === "star").length)
+  b.pet.t = 0.01; b.update(0.05); b.update(0.05); b.render(cv.getContext("2d")); shots.pet = cv.toDataURL(); log.push("pet act " + b.pet.act.toFixed(2))
+  b.startAttack(); b.attack.hitAt = 0.05; b.attack.e = 0; for (let i = 0; i < 8; i++) b.update(0.02); b.render(cv.getContext("2d")); shots.hurt = cv.toDataURL()
+  log.push("hurt fx " + b.fx.some((x) => x.type === "hurtfx") + ", sleep " + b.sleep.toFixed(1))
+  // 판사봉·인두기 특수 효과
+  const w2 = await boot({ college: "soc", weapon: "gavel" }); f.contentDocument.getElementById("b-fight").click(); await wait(100)
+  const b2 = w2.__jg.battle; b2.intro = 0; b2.nextAttack = 5; b2.weaponFx(); log.push("gavel delays next attack: " + b2.nextAttack.toFixed(1))
+  const w3 = await boot({ college: "eng", weapon: "solder" }); f.contentDocument.getElementById("b-fight").click(); await wait(100)
+  const b3 = w3.__jg.battle; b3.intro = 0; b3.nextAttack = 99; const h3 = b3.hp; b3.weaponFx(); for (let i = 0; i < 40; i++) b3.update(0.05); log.push("solder burn dmg over 2s: " + (h3 - b3.hp).toFixed(1))
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log, shots }) })
+</script>

@@ -1,11 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190714"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190714"
-import { Battle, W, H, drawCeiling, setVibrate } from "./battle.js?v=202610190714"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190714"
-import { makeCard } from "./card.js?v=202610190714"
-import { lbWin, lbBoard } from "./lb.js?v=202610190714"
-import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190714"
+import { loadArtSource, buildArt } from "./art.js?v=202610190740"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190740"
+import { Battle, W, H, drawCeiling, setVibrate } from "./battle.js?v=202610190740"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190740"
+import { makeCard } from "./card.js?v=202610190740"
+import { PART_GROUPS, WEAPON, SETS, statsOf } from "./parts.js?v=202610190740"
+import { lbWin, lbBoard } from "./lb.js?v=202610190740"
+import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190740"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -57,7 +58,27 @@ function fit() {
 window.addEventListener("resize", fit); fit()
 
 const menuProf = () => active()[0]
-function rebuild(p = menuProf()) { art = buildArt({ prof: p, stu }); drawPreviews() }
+// 등판 글씨: 갈무리를 1배 픽셀로 찍어 'o'/'.' 줄로 넘긴다 (그림 원본은 한글 글꼴이 없어서)
+const COLLEGE_FULL = Object.fromEntries(COLLEGES.map(([c, , f]) => [c, f]))
+function printRows(st) {
+  const SHORT = Object.fromEntries(COLLEGES.map(([c, sh]) => [c, sh]))
+  const full = st.print === "college" ? COLLEGE_FULL[st.college] || "대학교" : st.print === "custom" ? st.printText || "종강" : st.print === "jersey" ? st.no : st.print === "crest" ? "UNIV" : ""
+  if (!full) return []
+  const maxW = st.print === "jersey" ? 48 : 42                         // 마크(12칸) 옆에 들어가게
+  // 차례로 시도: 원래 글꼴 → 작은 글꼴 → (단과대면) 줄임말
+  const tries = st.print === "jersey" ? [[full, "l14", true], [full, "b11", true]]
+    : [[full, "s9", false], [full, "s7", false], ...(st.print === "college" ? [[SHORT[st.college] || "대학", "s9", false]] : [])]
+  let pick = tries[tries.length - 1]
+  for (const t of tries) if (textImage(t[0], { font: t[1], bold: t[2], color: "#000" }).width <= maxW) { pick = t; break }
+  const im = textImage(pick[0], { font: pick[1], bold: pick[2], color: "#000" })
+  const w = Math.min(im.width, maxW), d = im.getContext("2d").getImageData(0, 0, w, im.height).data, rows = []
+  for (let y = 0; y < im.height; y++) { let r = ""; for (let x = 0; x < w; x++) r += d[(y * w + x) * 4 + 3] > 127 ? "o" : "."; rows.push(r) }
+  while (rows.length && !rows[rows.length - 1].includes("o")) rows.pop()
+  while (rows.length && !rows[0].includes("o")) rows.shift()
+  return rows.slice(0, st.print === "jersey" ? 16 : 10)
+}
+const withRows = (st) => ({ ...st, printRows: printRows(st) })
+function rebuild(p = menuProf()) { art = buildArt({ prof: p, stu: withRows(stu) }); drawPreviews(); renderStats() }
 
 // ---------------------------------------------------------------- 화면
 function show(name) {
@@ -87,6 +108,7 @@ function renderTitle() {
 }
 
 // 선택지 줄: 이름 | ‹ 값 ›
+const SYNC = {}
 function optRows(el, opts, get, set, labels) {
   el.innerHTML = ""
   for (const [key, list] of Object.entries(opts)) {
@@ -95,22 +117,52 @@ function optRows(el, opts, get, set, labels) {
     const prev = document.createElement("button"); prev.textContent = "<"
     const val = document.createElement("span"); val.className = "v"
     const next = document.createElement("button"); next.textContent = ">"
-    const sync = () => { val.textContent = (list.find((o) => o[0] === get()[key]) || list[0])[1] }
+    const sync = () => { const t = (list.find((o) => o[0] === get()[key]) || list[0])[1]; val.textContent = t; val.classList.toggle("tiny", t.length > 11) }   // 긴 이름은 작은 글꼴
     const step = (d) => {
       const i = list.findIndex((o) => o[0] === get()[key]), n = list[(i + d + list.length) % list.length][0]
       set({ ...get(), [key]: n }); sync()
     }
     prev.onclick = () => step(-1); next.onclick = () => step(1)
     row.append(lab, prev, val, next); el.append(row); sync()
-    el["sync_" + key] = sync
+    el["sync_" + key] = sync; SYNC[key] = sync
   }
 }
 let rebuildTimer = 0
 function later(p) { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => rebuild(p), 60) }
 
-// 학생 꾸미기
-optRows($("#stu-form"), STU_OPTS, () => stu, (v) => { stu = sanitizeStu(v); saveLocal("jg-stu", stu); later() },
-  { college: "단과대", skin: "피부", jacket: "과잠 몸통", sleeve: "과잠 소매", hair: "머리", dark: "다크서클" })
+// 학생 꾸미기: 묶음별 선택지 + 스탯이 붙은 파츠는 이름 옆에 표시
+const STAT_N = { mental: "멘탈", speed: "타자", luck: "운", caff: "카페인" }
+const statText = (o) => (o ? " · " + Object.entries(o).map(([k, v]) => `${STAT_N[k]}+${v}`).join(" ") : "")
+function stuForm() {
+  const box = $("#stu-form"); box.innerHTML = ""
+  for (const [gname, rows] of PART_GROUPS) {
+    const h = document.createElement("div"); h.className = "grp"; h.textContent = gname
+    const sub = document.createElement("div"); sub.className = "form"
+    box.append(h, sub)
+    const opts = Object.fromEntries(rows.map(([k, , list]) => [k, list.map((o) => [o[0], o[1] + statText(o[2])])]))
+    const labels = Object.fromEntries(rows.map(([k, n]) => [k, n]))
+    optRows(sub, opts, () => stu, (v) => { stu = sanitizeStu(v); saveLocal("jg-stu", stu); later(); renderStats() }, labels)
+  }
+}
+stuForm()
+const stars = (v, lo, hi) => { const n = Math.max(1, Math.min(3, Math.round(1 + 2 * (v - lo) / (hi - lo)))); return "■".repeat(n) + "□".repeat(3 - n) }
+function renderStats() {
+  const st = statsOf(stu), Wp = WEAPON[stu.weapon] || WEAPON.keyboard, box = $("#stu-stats")
+  box.textContent = ""
+  const line = (parts) => { const d = document.createElement("div"); for (const [t, b] of parts) { const e = document.createElement(b ? "b" : "span"); e.textContent = t; d.append(e) } box.append(d) }
+  line([["멘탈 ", 0], [String(st.mental), 1], [" · 타자 ", 0], [String(st.speed), 1], [" · 운 ", 0], [String(st.luck), 1], [" · 카페인 ", 0], [String(st.caff), 1]])
+  line([[Wp.name + "  ", 1], [`공격 ${stars(Wp.dmg * (Wp.shots || 1), 1.5, 3.6)} 속도 ${stars(-Wp.rate, -0.11, -0.05)} 치명 ${stars(Wp.crit, 0.06, 0.22)}`, 0]])
+  line([[Wp.note, 0]])
+  const sets = $("#stu-sets"); sets.textContent = ""
+  for (const set of SETS) {
+    const on = st.sets.includes(set), d = document.createElement("div")
+    d.textContent = `${on ? "[켜짐] " : ""}${set.name}: ${set.hint} → ${set.desc}`
+    if (on) d.style.color = "#1d6b3f"
+    sets.append(d)
+  }
+}
+const stuPrint = $("#stu-print"); stuPrint.value = stu.printText || ""
+stuPrint.addEventListener("input", () => { stu = sanitizeStu({ ...stu, printText: stuPrint.value, print: stuPrint.value ? "custom" : stu.print }); saveLocal("jg-stu", stu); SYNC.print?.(); later() })
 const stuNo = $("#stu-no"); stuNo.value = stu.no
 stuNo.addEventListener("input", () => { const v = stuNo.value.replace(/[^0-9]/g, "").slice(0, 2); stuNo.value = v; if (v.length === 2) { stu = sanitizeStu({ ...stu, no: v }); saveLocal("jg-stu", stu); later() } })
 
@@ -161,9 +213,10 @@ $("#b-add").onclick = () => {
 function drawPreviews() {
   if (!art) return
   const a = $("#stu-preview").getContext("2d"); a.imageSmoothingEnabled = false
-  a.fillStyle = "#c5dcf2"; a.fillRect(0, 0, 120, 70)
-  a.drawImage(art[`por_${stu.dark}_idle`], 4, 18)
-  a.drawImage(art.stu_idle, 8, 166, 104, 70, 42, 0, 104, 70)
+  a.fillStyle = "#a89e8a"; a.fillRect(0, 0, 168, 100); a.fillStyle = "#cbc4b2"; a.fillRect(0, 0, 168, 30)
+  a.drawImage(art.stu_idle, 0, 137, 134, 100, 0, 0, 134, 100)
+  a.drawImage(art[`por_${stu.dark}_idle`], 133, 2)
+  if (stu.pet && stu.pet !== "none" && art[`pet_${stu.pet}_0`]) a.drawImage(art[`pet_${stu.pet}_0`], 136, 74)
   const b = $("#prof-preview").getContext("2d"); b.imageSmoothingEnabled = false
   b.fillStyle = "#2e5442"; b.fillRect(0, 0, 80, 64); b.drawImage(art.prof_idle, 51, 36, 80, 64, 0, 0, 80, 64)
 }
@@ -252,7 +305,7 @@ function askCollege(then) {
 }
 function setCollege(code) {
   stu = sanitizeStu({ ...stu, college: code }); saveLocal("jg-stu", stu)
-  $("#stu-form").sync_college?.()
+  SYNC.college?.()
   const f = afterCollege; afterCollege = null; f?.()
 }
 $("#b-college-none").onclick = () => setCollege("none")

@@ -1,3 +1,4 @@
+import { PARTS } from "./parts.js?v=202610190740"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = {
   glasses: [["half", "코끝 반무테"], ["tint", "변색렌즈"], ["horn", "두꺼운 뿔테"]],
@@ -7,17 +8,13 @@ export const PROF_OPTS = {
 }
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
 export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"]]
-export const STU_OPTS = {
-  college: [...COLLEGES.map(([c, s]) => [c, s]), ["none", "안 밝힘"]],
-  skin: [["dry", "카페인 푸석"], ["pale", "지박령 창백"], ["flush", "숙취 홍조"], ["tan", "실습 탄 피부"]],
-  jacket: [["navy", "남색"], ["black", "검정"], ["wine", "와인"], ["green", "초록"], ["gray", "회색"]],
-  sleeve: [["cream", "크림"], ["white", "흰색"], ["gray", "회색"], ["black", "검정"]],
-  hair: [["greasy", "3일 안 감은 머리"], ["buzz", "전역 밤톨"], ["pudding", "푸딩 탈색모"]],
-  dark: [[1, "1단계"], [2, "2단계"], [3, "3단계"], [4, "4단계"], [5, "5단계 (판다)"]],
-}
+export const STU_OPTS = PARTS                             // 묶음과 스탯은 parts.js
 export const DEFAULT_LINES = ["질문 있나?", "그건 기본이야.", "내 컴퓨터에선 되던데?"]
 export const DEFAULT_PROF = { name: "김OO", lines: DEFAULT_LINES.slice(), glasses: "half", hair: "bald", outfit: "tweed", level: "normal" }
-export const DEFAULT_STU = { college: "", skin: "dry", jacket: "navy", sleeve: "cream", hair: "greasy", no: "19", dark: 3 }
+export const DEFAULT_STU = {
+  college: "", skin: "dry", eyes: "tired", dark: 3, red: "no", mouth: "none", hair: "greasy", hstate: "none",
+  top: "jamba", print: "college", printText: "", jacket: "navy", sleeve: "cream", head: "none", neck: "none", wrist: "none", back: "none", weapon: "keyboard", pet: "none", no: "19",
+}
 
 const NAME_MAX = 8, LINE_MAX = 24
 const keys = (o) => o.map((x) => x[0])
@@ -38,7 +35,8 @@ export function sanitizeProf(p) {
 export function sanitizeStu(s) {
   const out = { ...DEFAULT_STU }
   if (!s || typeof s !== "object") return out
-  for (const k of ["college", "skin", "jacket", "sleeve", "hair"]) if (keys(STU_OPTS[k]).includes(s[k])) out[k] = s[k]
+  for (const k of Object.keys(STU_OPTS)) if (k !== "dark" && keys(STU_OPTS[k]).includes(s[k])) out[k] = s[k]
+  out.printText = clean(s.printText, 6)
   const no = String(s.no ?? "").replace(/[^0-9]/g, "").slice(0, 2)
   if (no.length === 2) out.no = no
   const d = Number(s.dark); if (d >= 1 && d <= 5) out.dark = Math.round(d)

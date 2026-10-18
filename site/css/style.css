@@ -62,4 +62,11 @@ h2 { font-family: "Galmuri11"; font-weight: 700; font-size: 12px; margin: 2px 0;
 .brow .n { text-align: right; }
 .brow .rk { font-family: "Galmuri11"; font-weight: 700; color: var(--R); }
 .college-btn { width: 100%; }
+.grp { width: 100%; margin: 4px 0 1px; font-family: "Galmuri11"; font-weight: 700; font-size: 12px; border-bottom: 1px solid var(--K); }
+.stats { width: 100%; background: var(--plate); color: #fff; border: 1px solid var(--K); padding: 2px 3px; font-family: "Galmuri7"; font-size: 8px; line-height: 1.4; }
+.stats b { color: #ffe04a; font-weight: normal; }
+.stats .on { color: #b8ffd6; }
+.sets { width: 100%; line-height: 1.5; }
+.opt .v { overflow: hidden; white-space: nowrap; text-overflow: clip; }
+.opt .v.tiny { font-family: "Galmuri7"; font-size: 8px; padding: 2px 0; }
 #toast { pointer-events: none; position: absolute; left: 10px; right: 10px; bottom: 60px; background: var(--K); color: #b8ffd6; font-family: "Galmuri9"; font-size: 10px; padding: 3px 4px; text-align: center; border: 1px solid var(--N); z-index: 10; }

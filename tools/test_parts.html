@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// 모든 파츠를 한 장에: 무기(대기·내려치기·두 손), 상의, 머리, 머리·귀, 등, 손목, 얼굴(눈·입), 동료
+import { loadArtSource, buildArt } from "./js/art.js"
+import { PARTS } from "./js/parts.js"
+import { DEFAULT_STU, DEFAULT_PROF } from "./js/config.js"
+await loadArtSource()
+const cell = 64, rows = [], add = (label, imgs) => rows.push([label, imgs])
+const crop = (img, x, y, w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#a89e8a"; g.fillRect(0, 0, w, h); g.drawImage(img, x, y, w, h, 0, 0, w, h); return c }
+const build = (stu, names) => buildArt({ prof: DEFAULT_PROF, stu: { ...DEFAULT_STU, ...stu } }, names)
+for (const [w] of PARTS.weapon) { const a = build({ weapon: w }, ["stu_idle", "stu_smash", "stu_overDown", "stu_sweepA"]); add("w:" + w, [crop(a.stu_idle, 20, 130, 110, 106), crop(a.stu_smash, 20, 130, 140, 106), crop(a.stu_overDown, 0, 140, 110, 96), crop(a.stu_sweepA, 40, 140, 140, 96)]) }
+const one = (key) => { const imgs = []; for (const [v] of PARTS[key]) { const a = build({ [key]: v }, ["stu_idle"]); imgs.push(crop(a.stu_idle, 0, 140, 110, 96)) } add(key, imgs) }
+for (const k of ["top", "hair", "hstate", "head", "back", "wrist", "neck"]) one(k)
+const face = (key) => { const imgs = []; for (const [v] of PARTS[key]) { const a = build({ [key]: v, dark: 3 }, ["por_3_idle"]); imgs.push(a.por_3_idle) } add("face:" + key, imgs) }
+for (const k of ["eyes", "mouth", "hair", "top", "head"]) face(k)
+const pets = []; for (const [p] of PARTS.pet.slice(1)) { const a = build({}, [`pet_${p}_0`, `pet_${p}_1`]); pets.push(a[`pet_${p}_0`], a[`pet_${p}_1`]) } add("pets", pets)
+// 한 장으로
+const W = 1500, out = document.createElement("canvas"), sc = 2
+let H = 0; for (const [, imgs] of rows) H += Math.max(...imgs.map((i) => i.height)) * sc + 16
+out.width = W; out.height = H; const g = out.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#222"; g.fillRect(0, 0, W, H); g.font = "12px sans-serif"
+let y = 0
+for (const [label, imgs] of rows) {
+  let x = 90; g.fillStyle = "#fff"; g.fillText(label, 4, y + 14)
+  const rh = Math.max(...imgs.map((i) => i.height)) * sc
+  for (const im of imgs) { if (x + im.width * sc > W) break; g.drawImage(im, x, y, im.width * sc, im.height * sc); x += im.width * sc + 4 }
+  y += rh + 16
+}
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ sheet: out.toDataURL() }) })
+</script>
