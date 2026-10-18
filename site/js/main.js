@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190740"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190740"
-import { Battle, W, H, drawCeiling, setVibrate } from "./battle.js?v=202610190740"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190740"
-import { makeCard } from "./card.js?v=202610190740"
-import { PART_GROUPS, WEAPON, SETS, statsOf } from "./parts.js?v=202610190740"
-import { lbWin, lbBoard } from "./lb.js?v=202610190740"
-import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190740"
+import { loadArtSource, buildArt } from "./art.js?v=202610190747"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190747"
+import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190747"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190747"
+import { makeCard } from "./card.js?v=202610190747"
+import { PART_GROUPS, WEAPON, SETS, statsOf } from "./parts.js?v=202610190747"
+import { lbWin, lbBoard } from "./lb.js?v=202610190747"
+import { COLLEGES, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190747"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -153,6 +153,9 @@ function renderStats() {
   line([["멘탈 ", 0], [String(st.mental), 1], [" · 타자 ", 0], [String(st.speed), 1], [" · 운 ", 0], [String(st.luck), 1], [" · 카페인 ", 0], [String(st.caff), 1]])
   line([[Wp.name + "  ", 1], [`공격 ${stars(Wp.dmg * (Wp.shots || 1), 1.5, 3.6)} 속도 ${stars(-Wp.rate, -0.11, -0.05)} 치명 ${stars(Wp.crit, 0.06, 0.22)}`, 0]])
   line([[Wp.note, 0]])
+  const sk = skillSet(stu.college)                                   // 단과대마다 다른 스킬 세 칸
+  line([["스킬 ", 0], [sk.map((k) => k.name).join(" · "), 1]])
+  for (const k of sk) line([[`${k.name}: ${k.desc}${k.cost ? ` (카페인 ${k.cost})` : ""}`, 0]])
   const sets = $("#stu-sets"); sets.textContent = ""
   for (const set of SETS) {
     const on = st.sets.includes(set), d = document.createElement("div")

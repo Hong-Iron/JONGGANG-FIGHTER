@@ -525,6 +525,25 @@ sprite("ic_push", { w: 28, h: 28 }, (c) => {
   c.rect(18, 13, 2, 5, "X"); c.rect(18, 19, 2, 2, "X")
 })
 
+// 단과대별 스킬 아이콘 (28×28). 공대는 위의 점퍼선·원샷·강제 푸시
+const ICON = (name, fn) => sprite(name, { w: 28, h: 28 }, (c) => { c.rect(0, 0, 28, 28, "K"); c.rect(1, 1, 26, 26, "p"); fn(c) })
+// 인문대
+ICON("ic_postit", (c) => { c.rect(5, 7, 14, 14, "o"); c.rect(9, 4, 14, 14, "^"); c.rect(9, 4, 14, 3, "O"); for (const y of [9, 12, 15]) c.hline(11, y, 9, "R"); c.line(12, 9, 18, 16, "R") })
+ICON("ic_pen3", (c) => { c.poly([8, 22, 18, 4, 22, 6, 12, 24], "!"); c.poly([18, 4, 20, 2, 23, 4, 22, 6], "K"); for (const [x, col] of [[9, "R"], [12, "="], [15, "K"]]) c.rect(x, 22 - (x - 9), 2, 2, col); c.poly([8, 22, 12, 24, 8, 26], "$"); c.hline(3, 25, 22, "R") })
+ICON("ic_report", (c) => { for (let k = 0; k < 4; k++) { c.rect(5 + k * 2, 6 + k * 2, 14, 16, k === 3 ? "X" : "l"); c.rect(5 + k * 2, 6 + k * 2, 14, 1, "K") } c.text(14, 15, "30", "R"); for (const y of [22, 24]) c.hline(13, y, 8, "@") })
+// 사회대
+ICON("ic_recorder", (c) => { c.rect(8, 4, 12, 20, "$"); c.rect(10, 6, 8, 6, "@"); for (let y = 7; y < 12; y += 2) c.hline(11, y, 6, "$"); c.rect(10, 15, 8, 3, "N"); c.rect(12, 20, 4, 2, "U"); c.px(13, 16, "6") })
+ICON("ic_factcheck", (c) => { c.rect(10, 4, 8, 8, "w"); c.rect(7, 12, 14, 5, "v"); c.rect(5, 17, 18, 4, "R"); c.line(9, 23, 12, 26, "R"); c.line(12, 26, 20, 22, "R"); c.line(10, 23, 12, 25, "R") })
+ICON("ic_petition", (c) => { c.poly([4, 11, 10, 11, 20, 5, 20, 23, 10, 17, 4, 17], "U"); c.poly([4, 11, 10, 11, 10, 17, 4, 17], "7"); c.rect(6, 17, 3, 6, "7"); c.line(22, 8, 25, 6, "U"); c.line(22, 14, 26, 14, "U"); c.line(22, 20, 25, 22, "U") })
+// 자연대
+ICON("ic_lamp", (c) => { c.poly([7, 16, 21, 16, 23, 24, 5, 24], "b"); c.rect(5, 20, 18, 4, "Z"); c.rect(12, 12, 4, 4, "@"); c.poly([11, 12, 14, 3, 17, 12], "O"); c.poly([12, 12, 14, 6, 16, 12], "^") })
+ICON("ic_nitrogen", (c) => { c.rect(9, 8, 10, 16, "!"); c.rect(9, 8, 3, 16, "@"); c.rect(11, 5, 6, 3, "$"); for (const [x, y] of [[8, 3], [13, 1], [18, 3], [6, 6], [21, 6]]) c.rect(x, y, 2, 2, "~"); c.text(10, 14, "N", "=") })
+ICON("ic_centrifuge", (c) => { c.rect(4, 12, 20, 12, "@"); c.rect(4, 12, 20, 2, "!"); c.rect(7, 16, 14, 6, "$"); for (const [x, y] of [[9, 4], [16, 4], [12, 7]]) { c.rect(x, y, 3, 8, "x"); c.rect(x, y + 5, 3, 3, "Z") } c.line(4, 9, 8, 6, "K"); c.line(24, 9, 20, 6, "K") })
+// 예대
+ICON("ic_spray", (c) => { c.rect(9, 9, 10, 15, "U"); c.rect(9, 9, 3, 15, "7"); c.rect(11, 5, 6, 4, "!"); c.rect(13, 3, 2, 2, "K"); for (const [x, y, col] of [[18, 2, "Z"], [21, 4, "N"], [20, 7, "o"], [23, 2, "U"], [24, 6, "Z"]]) c.rect(x, y, 2, 2, col) })
+ICON("ic_metronome", (c) => { c.poly([8, 24, 11, 4, 17, 4, 20, 24], "w"); c.poly([10, 24, 12, 8, 16, 8, 18, 24], "W"); c.line(14, 20, 20, 6, "K"); c.rect(17, 10, 3, 3, "o"); c.rect(7, 23, 14, 2, "v") })
+ICON("ic_canvas", (c) => { c.rect(3, 4, 22, 18, "W"); c.rect(5, 6, 18, 14, "p"); c.rect(7, 9, 5, 4, "Z"); c.rect(13, 12, 6, 5, "U"); c.line(6, 18, 21, 8, "N"); c.line(9, 22, 6, 26, "w"); c.line(19, 22, 22, 26, "w") })
+
 // 미리보기용 (pxl CLI): 기본 꾸미기로 한 장면
 scene("preview", { w: 180, h: 236, bg: "k" },
   stamp("room", 0, 0), stamp("prof_arms", -1, -1), stamp("prof_p2", -1, -1), stamp("lectern", -1, -1),

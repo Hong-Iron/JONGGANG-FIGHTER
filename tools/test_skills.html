@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 단과대 다섯 곳의 스킬 15개를 하나씩 써 보고 효과를 숫자로 확인, 궁극기는 장면을 찍는다
+const log = [], shots = {}, f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot(college, tries = 3) {
+  for (let k = 0; k < tries; k++) { const r = await boot1(college); if (r) return r }
+  throw new Error("page did not load for " + college)
+}
+async function boot1(college) {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+  const w = f.contentWindow; for (let i = 0; i < 300 && !(w.__jg && w.__jg.art); i++) await wait(50)
+  if (!(w.__jg && w.__jg.art)) return null
+  f.contentDocument.getElementById("b-fight").click(); await wait(80)
+  const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99; b.caff = 100; return [w, b]
+}
+const step = (b, s) => { for (let i = 0; i < Math.round(s / 0.01); i++) b.update(0.01) }
+const fresh = (b) => { for (const k in b.cd) b.cd[k] = 0; b.caff = 100; b.attack = null; b.nextAttack = 99 }
+const shot = (w, b, name) => { const cv = w.document.getElementById("game"); b.render(cv.getContext("2d")); shots[name] = cv.toDataURL() }
+try {
+  for (const col of (new URLSearchParams(location.search).get("c") || "eng,hum,soc,sci,art").split(",")) {
+    const [w, b] = await boot(col)
+    const names = b.SK.map((k) => k.name).join(",")
+    const r = [col + ": " + names]
+    // 1칸
+    fresh(b); let hp = b.hp; b.skill(0); step(b, 1.0)
+    r.push("s1 bind=" + b.bind.toFixed(1) + "/" + b.bindKind + " burn=" + b.burn.toFixed(1) + " slow=" + b.slowT.toFixed(1) + " blind=" + b.blindT.toFixed(1) + " dmg1s=" + (hp - b.hp).toFixed(1))
+    if (col === "soc") { b.startAttack(); r.push("slowed tele=" + b.attack.hitAt.toFixed(2)); b.attack = null }
+    if (col === "art") { let miss = 0; for (let k = 0; k < 20; k++) { b.parryLock = 0; b.shield = false; b.blindT = 5; b.startAttack(); b.attack.hitAt = 0.02; const s0 = b.sleep; step(b, 0.1); if (b.sleep === s0) miss++; b.attack = null; b.sleep = 100 } r.push("spray misses " + miss + "/20") }
+    if (b.bind > 0) shot(w, b, col + "_s1")
+    step(b, 4); b.bind = 0; b.burn = 0
+    // 2칸
+    fresh(b); hp = b.hp; b.skill(1); step(b, 0.05)
+    r.push("s2 haste=" + b.haste.toFixed(1) + " critB=" + b.critB.toFixed(1) + " shield=" + b.shield + " freeze=" + b.freezeP.toFixed(1) + " beat=" + b.beatT.toFixed(1))
+    if (col === "soc") { const p0 = b.stats.parries, s0 = b.sleep; b.startAttack(); b.attack.hitAt = 0.02; step(b, 0.15); r.push("factcheck auto-parry +" + (b.stats.parries - p0) + " sleep " + s0 + "->" + b.sleep.toFixed(0)) }
+    if (col === "sci") { b.nextAttack = 0.01; step(b, 0.3); r.push("frozen: attack started? " + !!b.attack); const h1 = b.hp; b.lastTap = -9; b.tap(); r.push("frozen tap dmg " + (h1 - b.hp).toFixed(1)); shot(w, b, "sci_s2") }
+    if (col === "art") { let on = 0; for (let k = 0; k < 10; k++) { b.t = b.beat0 + 0.42 * (k + 1) + 0.01; b.lastTap = -9; const c0 = b.stats.crits; b.tap(); if (b.stats.crits > c0) on++ } r.push("on-beat crits " + on + "/10"); shot(w, b, "art_s2") }
+    // 3칸 (궁극기)
+    fresh(b); b.grad = null; hp = b.hp; b.skill(2)
+    step(b, 0.3); shot(w, b, col + "_ult"); step(b, 1.2)
+    r.push("ult dmg " + (hp - b.hp).toFixed(0) + " cine " + (b.cine ? b.cine.kind : "none") + (col === "soc" ? " stun=" + b.bind.toFixed(1) + "/" + b.bindKind : ""))
+    log.push(r.join(" | "))
+  }
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log, shots }) })
+</script>

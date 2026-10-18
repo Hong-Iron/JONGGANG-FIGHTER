@@ -1,4 +1,4 @@
-import { PARTS } from "./parts.js?v=202610190740"
+import { PARTS } from "./parts.js?v=202610190747"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = {
   glasses: [["half", "코끝 반무테"], ["tint", "변색렌즈"], ["horn", "두꺼운 뿔테"]],
