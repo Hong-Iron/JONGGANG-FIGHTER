@@ -1,6 +1,6 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
 // res.result: "lose"(쓰러짐) | "timeout"(3분 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610190955"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191026"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
@@ -52,12 +52,13 @@ export function makeCard(art, res) {
   // 본문
   wrap(d.body, "s9", w - 24, 5).forEach((l, i) => drawText(x, l, 12, 125 + i * 11, { font: "s9", color: K }))
   const s = res.stats
-  drawText(x, `반박 ${s.parries}회 (완벽 ${s.perfect}) · A+ ${s.crits}개`, 12, 180, { font: "s7", color: G })
-  drawText(x, `최대 ${s.maxCombo}콤보 · 최고 기록 ${Math.max(rec.best || 0, n)}연승`, 12, 189, { font: "s7", color: G })
+  drawText(x, `반박 ${s.parries}회 (완벽 ${s.perfect}) · A+ ${s.crits}개`, 12, 178, { font: "s7", color: G })
+  drawText(x, `최대 ${s.maxCombo}콤보 · 최고 기록 ${Math.max(rec.best || 0, n)}연승`, 12, 187, { font: "s7", color: G })
+  if (res.run.ups) drawFit(x, "강화: " + res.run.ups, 12, 196, 108, { font: "s7", color: G })   // 도장 왼쪽까지만
   // 날짜와 도장
   const dt = new Date(), date = `${dt.getFullYear()}. ${dt.getMonth() + 1}. ${dt.getDate()}.`
-  drawText(x, date, 12, 201, { font: "s9", color: K })
-  drawText(x, "종강 파이터 학사지원팀장", 12, 211, { font: "s7", color: K })
+  drawText(x, date, 12, 205, { font: "s9", color: K })
+  drawText(x, "종강 파이터 학사지원팀장", 12, 215, { font: "s7", color: K })
   const st = textImage(d.stamp, { font: "l14", bold: true, stamp: -8, color: R, outline: P })
   x.drawImage(st, w - st.width - 10, h - st.height - 8)
   // 6배로

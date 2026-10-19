@@ -43,6 +43,15 @@ h2 { font-family: "Galmuri11"; font-weight: 700; font-size: 12px; margin: 2px 0;
 .row .btn { font-family: "Galmuri9"; font-size: 10px; padding: 2px 4px; white-space: nowrap; }
 .btn.support { font-family: "Galmuri7"; font-size: 8px; padding: 3px 2px; text-decoration: none; text-align: center; color: #191919; box-shadow: inset 1px 1px 0 #fff59a, inset -1px -1px 0 #b8a000; }
 .btn.support.kakao { background: #fee500; }
+.btn:disabled { filter: grayscale(1); opacity: 0.55; cursor: default; }
+/* 무기 강화 고르기: 세로로 쌓인 공문 카드 세 장 */
+.up-title { margin: 0; text-align: center; color: #ffe48a; font-family: "Galmuri9"; font-size: 10px; }
+.up-pick { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.up-card { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 3px 5px; text-align: left; }
+.up-card b { font-family: "Galmuri9"; font-size: 10px; font-weight: normal; }
+.up-card span { font-family: "Galmuri7"; font-size: 8px; opacity: 0.85; }
+.up-card.picked { background: var(--N); color: var(--K); }
+.up-pick.done .up-card:not(.picked) { opacity: 0.35; }
 .btn.kakao-share { background: #fee500; color: #191919; box-shadow: inset 1px 1px 0 #fff59a, inset -1px -1px 0 #b8a000; }
 .btn.support.bmc { background: #ffdd00; }
 .screen.dim { background: rgba(20, 10, 30, 0.6); justify-content: center; }

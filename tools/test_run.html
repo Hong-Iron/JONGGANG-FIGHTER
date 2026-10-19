@@ -16,6 +16,7 @@ try {
   let b = w.__jg.battle; const L0 = { hp: b.L.hp, tele: b.L.tele[0], dmg: b.L.dmg[0], prof: b.prof.name }
   winNow(b); log.push("after win -> next screen: " + await until(w, () => w.__jg.screen === "next"))
   log.push("next info: " + d.getElementById("next-info").textContent)
+  d.querySelector("#up-pick .up-card").click()                          // 무기 강화 하나 고르기
   log.push("auto start: " + await until(w, () => w.__jg.screen === "battle", 5000))
   b = w.__jg.battle; const L1 = { hp: b.L.hp, tele: b.L.tele[0], dmg: b.L.dmg[0], prof: b.prof.name, stage: b.stage, sleep: b.sleep }
   log.push("stage0 " + JSON.stringify(L0) + " stage1 " + JSON.stringify(L1))
@@ -27,7 +28,7 @@ try {
   const t0 = b.t; b.update(0.05); log.push("time frozen while paused: " + (b.t === t0))
   d.getElementById("b-resume").click(); log.push("resume: screen " + w.__jg.screen + ", paused " + b.paused)
   // 두 번 더 이기고 (난이도 3), 그다음 진다
-  winNow(b); await until(w, () => w.__jg.screen === "next"); d.getElementById("b-next").click(); await wait(50)
+  winNow(b); await until(w, () => w.__jg.screen === "next"); d.querySelector("#up-pick .up-card").click(); d.getElementById("b-next").click(); await wait(50)
   b = w.__jg.battle; log.push("stage2 prof " + b.prof.name + " hp " + b.L.hp + " tele " + b.L.tele[0].toFixed(2) + " quiz " + b.L.quiz + " decoy " + b.L.decoy.toFixed(2))
   b.intro = 0; b.finish("lose"); log.push("lose -> result: " + await until(w, () => w.__jg.screen === "result"))
   log.push("record " + JSON.stringify(w.__jg.record))

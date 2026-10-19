@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 무기 강화: 이기면 셋 중 하나 고르기, 고르기 전엔 시작 안 함, 고르면 3초 뒤 시작, 강화마다 숫자가 맞는지
+const log = [], shots = {}, f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+log.push = function (s) { console.log("LOG " + s); return Array.prototype.push.call(this, s) }
+async function boot() {
+  for (let t = 0; t < 4; t++) {
+    f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow; for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+  }
+  throw new Error("boot failed")
+}
+async function until(w, cond, ms = 6000) { const t0 = performance.now(); while (!cond() && performance.now() - t0 < ms) { const b = w.__jg.battle; if (b) for (let i = 0; i < 5; i++) b.update(0.02); await wait(5) } return cond() }
+function winNow(b) { b.intro = 0; b.attack = null; b.nextAttack = 99; b.grad = null; b.summons = 2; b.phase = 2; b.hp = 1; b.lastTap = -9; b.t += 0.2; b.tap() }
+try {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  const w = await boot(), d = f.contentDocument
+  w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+  winNow(w.__jg.battle); log.push("next screen: " + await until(w, () => w.__jg.screen === "next"))
+  const cards = [...d.querySelectorAll("#up-pick .up-card")]
+  log.push("cards: " + cards.map((c) => c.textContent).join(" / ") + " | next btn disabled " + d.getElementById("b-next").disabled + " '" + d.getElementById("b-next").textContent + "'")
+  await wait(400); const cv = d.getElementById("game")
+  shots.next = await new Promise((r) => w.requestAnimationFrame(() => r(null)))
+  await wait(3600); log.push("after 4s without pick, still next: " + (w.__jg.screen === "next"))
+  cards[0].click(); await wait(100)
+  log.push("picked -> ups " + JSON.stringify(w.__jg.run.ups) + " | info " + d.getElementById("next-info").textContent)
+  log.push("auto start: " + await until(w, () => w.__jg.screen === "battle", 4500) + " | battle ups " + JSON.stringify(w.__jg.battle.ups))
+  // 숫자 확인: 같은 학생으로 강화만 바꿔 전투를 만든다
+  const B = w.__jg.battle.constructor, base = { art: w.__jg.art, prof: w.__jg.run.list[0], stu: { ...w.__jg.battle.stu }, onEnd() {} }
+  const mk = (ups) => { const b = new B({ ...base, ups }); b.intro = 0; b.nextAttack = 999; b.quizzes = 9; b.hp = b.hpMax = 1e6; b.phase = 2; b.summons = 2; b.ST = { ...b.ST, luck: 0 }; return b }
+  const avgTap = (b, n = 300, crit = 0) => { b.W = { ...b.W, crit }; let t = 0; for (let i = 0; i < n; i++) { b.lastTap = -9; const h = b.hp; b.tap(); t += h - b.hp; b.combo = 0 } return t / n }
+  const b0 = mk({}), d0 = avgTap(b0)
+  log.push("dmg Lv3: x" + (avgTap(mk({ dmg: 3 })) / d0).toFixed(2) + " (expect 1.45)")
+  const bd = mk({ double: 5 }); avgTap(bd); log.push("double Lv5: " + ((bd.stats.doubles || 0) / 300 * 100).toFixed(0) + "% (expect ~60%)")
+  log.push("critdmg Lv2: x" + (avgTap(mk({ critdmg: 2 }), 100, 1) / avgTap(mk({}), 100, 1)).toFixed(2) + " (expect 1.80)")
+  const bc = mk({ crit: 5 }); bc.W = { ...bc.W }; let cr = 0; for (let i = 0; i < 400; i++) { bc.lastTap = -9; const c0 = bc.stats.crits; bc.tap(); if (bc.stats.crits > c0) cr++; bc.combo = 0 } log.push("crit Lv5: " + (cr / 4).toFixed(0) + "% (base " + Math.round(b0.W.crit * 100) + "% + 30)")
+  const bs = mk({ cool: 4 }); bs.caff = 100; bs.skill(1); log.push("cool Lv4 cd " + bs.cd[bs.SK[1].id].toFixed(1) + " of " + bs.SK[1].cd + " (expect x0.52)")
+  const ba = mk({ armor: 4 }), bn = mk({}); for (const b of [ba, bn]) { b.startAttack(); b.attack.hitAt = 0.02; b.attack.kind = "laser"; for (let i = 0; i < 10; i++) b.update(0.02) } log.push("armor Lv4 took " + (100 - ba.sleep).toFixed(1) + " vs " + (100 - bn.sleep).toFixed(1) + " (expect x0.6)")
+  const parryDmg = (ups) => { const b = mk(ups); b.startAttack(); b.attack.e = b.attack.hitAt - 0.05; const h = b.hp; b.parry(); return h - b.hp }
+  log.push("counter Lv2 extra on perfect parry: " + (parryDmg({ counter: 2 }) - parryDmg({})).toFixed(0) + " (expect 30)")
+  for (const ups of [{}, { parry: 3 }]) { const b = mk(ups); b.startAttack(); b.attack.e = b.attack.hitAt - 0.42; const p0 = b.stats.parries; b.parry(); log.push("parry " + JSON.stringify(ups) + " at 0.42s early: parried " + (b.stats.parries > p0)) }
+  const bv = mk({ vamp: 4 }); bv.sleep = 50; avgTap(bv, 10, 1); log.push("vamp Lv4 after 10 crits: sleep 50 -> " + bv.sleep)
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

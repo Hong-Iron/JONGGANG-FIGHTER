@@ -1,9 +1,10 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190955"
-import { sfx } from "./sfx.js?v=202610190955"
-import { WEAPON, statsOf } from "./parts.js?v=202610190955"
-import { profTitle } from "./config.js?v=202610190955"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191026"
+import { sfx } from "./sfx.js?v=202610191026"
+import { WEAPON, statsOf } from "./parts.js?v=202610191026"
+import { profTitle } from "./config.js?v=202610191026"
+import { upStats } from "./upgrades.js?v=202610191026"
 
 export const W = 180, H = 320
 
@@ -112,11 +113,12 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)]
 const inRect = (x, y, rx, ry, rw, rh) => x >= rx && x < rx + rw && y >= ry && y < ry + rh
 
 export class Battle {
-  constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100 }) {
+  constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100, ups = {} }) {
     this.art = art; this.prof = prof; this.stu = stu; this.onEnd = onEnd; this.onPause = onPause
     this.stage = stage
     this.W = WEAPON[stu.weapon] || WEAPON.keyboard
     this.ST = statsOf(stu)
+    this.ups = ups; this.UP = upStats(ups)                            // 이번 도전에서 고른 무기 강화
     this.pet = stu.pet && stu.pet !== "none" ? { kind: stu.pet, t: 4, act: 0 } : null
     this.burn = 0; this.burnTick = 0
     const L = scaled(LV[prof.level] || LV.normal, stage)
@@ -161,7 +163,7 @@ export class Battle {
   counter() {
     const a = this.attack
     if (this.cine || !a || a.done) return
-    this.resolveParry(a.e - a.appear <= PERFECT_REACT + 0.02 * this.ST.speed)
+    this.resolveParry(a.e - a.appear <= PERFECT_REACT + 0.02 * this.ST.speed + this.UP.parryAdd * 0.8)
   }
   placeTarget(a) {
     const spot = () => [Math.round(rnd(8, W - TW - 8)), Math.round(rnd(44, ARENA_BOT - TH - 30))]
@@ -181,21 +183,21 @@ export class Battle {
   }
 
   tap() {
-    const rate = Math.max(0.035, this.W.rate * this.ST.fx.rate * (1 - 0.04 * this.ST.speed))   // 무기·타자 속도·세트
+    const rate = Math.max(0.03, this.W.rate * this.ST.fx.rate * (1 - 0.04 * this.ST.speed) * this.UP.rateMul)   // 무기·타자 속도·세트·강화
     if (this.cine || this.t - this.lastTap < rate) return
     this.lastTap = this.t
     this.stats.taps++
     this.combo = this.t - this.comboT < 0.45 ? this.combo + 1 : 1; this.comboT = this.t
     this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo)
-    this.caff = Math.min(100, this.caff + 0.6)
+    this.caff = Math.min(100, this.caff + 0.6 * this.UP.caffMul)
     let mult = this.haste > 0 ? 2 : 1
     if (this.spec > 0) mult *= pick([0, 0.5, 1, 2, 3])
     const W = this.W
     const onBeat = this.beatT > 0 && (() => { const ph = ((this.t - this.beat0) % BEAT + BEAT) % BEAT; return ph < 0.09 || ph > BEAT - 0.09 })()
-    const crit = onBeat || Math.random() < W.crit + 0.01 * this.ST.luck + (this.critB > 0 ? 0.3 : 0)
+    const crit = onBeat || Math.random() < W.crit + 0.01 * this.ST.luck + (this.critB > 0 ? 0.3 : 0) + this.UP.critAdd
     if (onBeat) this.say("박자!", 140, 182, C.o, { font: "s9", outline: C.K })
     if (this.freezeP > 0) mult *= 1.5
-    const dmg = W.dmg * (crit ? (W.critMul || 3) * (this.roundsT > 0 ? 2 : 1) : 1) * mult * this.ST.fx.dmgMul * (this.bind > 0 && this.bindKind === "bandage" ? 1.3 : 1)
+    const dmg = W.dmg * (crit ? (W.critMul || 3) * (this.roundsT > 0 ? 2 : 1) * this.UP.critMul : 1) * mult * this.ST.fx.dmgMul * this.UP.dmgMul * (this.bind > 0 && this.bindKind === "bandage" ? 1.3 : 1)
     sfx("key"); if (crit) buzz(18)
     // 동작 고르기: 콤보 6부터 두 손 내려찍기, 그 전에는 내려치기와 옆으로 휘두르기를 번갈아
     const kind = this.combo >= 6 ? "over" : this.stats.taps % 2 ? "smash" : "sweep"
@@ -216,6 +218,13 @@ export class Battle {
       if (k) this.fx.push({ type: "star", x: Math.round(sx), y: Math.round(sy), big: false, t: 0, delay, life: delay + 0.08 })
       this.damage(dmg + (finisher && !k ? 15 : 0), { x: sx, y: sy, crit: crit && !k, noGrade: k > 0 })
     }
+    if (this.UP.double && Math.random() < this.UP.double && this.cine == null && !this.over) {   // 더블 클릭: 한 번 더 친다
+      const dx = hx + rnd(8, 16), dy = hy + rnd(-10, 4)
+      this.fx.push({ type: "star", x: Math.round(dx), y: Math.round(dy), big: false, t: 0, delay: delay + 0.05, life: delay + 0.13 })
+      this.damage(dmg, { x: dx, y: dy, noGrade: true }); this.stats.doubles = (this.stats.doubles || 0) + 1
+      if (Math.random() < 0.25) this.say("더블!", Math.round(dx + 10), Math.round(dy - 14), C.o, { font: "s9", outline: C.K })
+    }
+    if (crit && this.UP.vamp) this.sleep = Math.min(100, this.sleep + this.UP.vamp)   // 학점 세탁
     for (let i = 0; i < (crit ? 3 : 1) + (shots > 1 ? 2 : 0); i++) this.spawnCap(tx, ty)
     if (crit) this.weaponFx()
     if (finisher) {
@@ -246,8 +255,8 @@ export class Battle {
     const a = this.attack
     if (!a || a.done) return this.whiff("헛반박!")                   // 공격이 없을 때
     const left = a.hitAt - a.e
-    if (left > PARRY_WIN) return this.whiff("너무 일찍!")            // 반박할 때가 아직 아닐 때
-    this.resolveParry(left <= PERFECT_WIN)
+    if (left > PARRY_WIN + this.UP.parryAdd) return this.whiff("너무 일찍!")   // 반박할 때가 아직 아닐 때
+    this.resolveParry(left <= PERFECT_WIN + this.UP.parryAdd * 0.4)
   }
   resolveParry(perfect) {
     const a = this.attack
@@ -255,7 +264,8 @@ export class Battle {
     a.done = true; a.parried = true
     this.stats.parries++; if (perfect) this.stats.perfect++
     sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15); buzz(perfect ? [35, 40, 35] : 35)
-    this.caff = Math.min(100, this.caff + (perfect ? 18 : 10))
+    this.caff = Math.min(100, this.caff + (perfect ? 18 : 10) * this.UP.caffMul)
+    if (this.UP.counter) this.damage(this.UP.counter * (perfect ? 1.5 : 1), { x: 100, y: 104, noGrade: true })   // 역질문
     this.shatter(a)
     if (a.kind === "chalk") this.fx.push({ type: "chalkback", t: 0, life: 0.25 })
     this.say(perfect ? "완벽한 반박!" : "반박 성공!", 145, 34, C.n6, { font: "b11", outline: C.n, outline2: C.K, rise: 1 })
@@ -278,7 +288,7 @@ export class Battle {
   skill(i) {
     const s = this.SK[i]
     if (!s || this.cine || this.cd[s.id] > 0 || this.caff < s.cost) { sfx("early"); return }
-    this.caff -= s.cost; this.cd[s.id] = s.cd; this.stats.skills++; buzz(s.cost >= 100 ? [60, 30, 120] : 40)
+    this.caff -= s.cost; this.cd[s.id] = s.cd * this.UP.cdMul; this.stats.skills++; buzz(s.cost >= 100 ? [60, 30, 120] : 40)
     const stopAttack = () => { if (this.attack && !this.attack.done) { this.attack.done = true; this.endAttack() } }
     const shout = (t, col, y = 150) => this.say(t, 90, y, col, { font: "b11", outline: C.K })
     switch (s.id) {
@@ -346,7 +356,7 @@ export class Battle {
     this.critB = Math.max(0, this.critB - dt); this.slowT = Math.max(0, this.slowT - dt); this.freezeP = Math.max(0, this.freezeP - dt)
     this.blindT = Math.max(0, this.blindT - dt); this.beatT = Math.max(0, this.beatT - dt)
     if (this.burn <= 0) this.burnDmg = 1.5
-    this.caff = Math.min(100, this.caff + dt * (5 + this.ST.caff) * this.ST.fx.caffMul)
+    this.caff = Math.min(100, this.caff + dt * (5 + this.ST.caff) * this.ST.fx.caffMul * this.UP.caffMul)
     if (this.ST.fx.drain && this.intro <= 0) { this.sleep = Math.max(1, this.sleep - this.ST.fx.drain * dt) }
     if (this.burn > 0) { this.burn -= dt; this.burnTick -= dt; if (this.burnTick <= 0) { this.burnTick = 0.3; this.damage(this.burnDmg, { x: 100 + rnd(-20, 20), y: 110, noGrade: true, quiet: true }) } }
     if (this.pet && this.intro <= 0) this.updatePet(dt)
@@ -405,7 +415,7 @@ export class Battle {
     }
     if (!a.done && a.e >= a.hitAt + 0.05) {                           // 맞았다
       a.done = true
-      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental) * (this.guardT > 0 ? 0.5 : 1)
+      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental) * (this.guardT > 0 ? 0.5 : 1) * this.UP.takenMul
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
       this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz([90, 40, 60])
       this.combo = 0

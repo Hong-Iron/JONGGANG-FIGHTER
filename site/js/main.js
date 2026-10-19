@@ -1,12 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190955"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190955"
-import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190955"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190955"
-import { makeCard } from "./card.js?v=202610190955"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190955"
-import { lbWin, lbBoard } from "./lb.js?v=202610190955"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190955"
+import { loadArtSource, buildArt } from "./art.js?v=202610191026"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610191026"
+import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191026"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191026"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191026"
+import { makeCard } from "./card.js?v=202610191026"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191026"
+import { lbWin, lbBoard } from "./lb.js?v=202610191026"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191026"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -263,7 +264,7 @@ function startRun() {
   if (!stu.college) return askCollege(startRun)
   document.activeElement?.blur?.()                       // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   const list = active()
-  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college }
+  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college, ups: {} }
   startFight()
 }
 function startFight() {
@@ -271,7 +272,7 @@ function startFight() {
   const p = run.list[run.stage % run.list.length]
   run.last = profTitle(p); run.lastCollege = p.college
   rebuild(p)
-  battle = new Battle({ art, prof: p, stu, stage: run.stage, sleep: run.sleep, onEnd: endFight, onPause: pause })
+  battle = new Battle({ art, prof: p, stu, stage: run.stage, sleep: run.sleep, ups: run.ups, onEnd: endFight, onPause: pause })
   battle.setExtra(EX)
   document.activeElement?.blur?.()
   show("battle")
@@ -287,18 +288,37 @@ function endFight(res) {
   run.stage++; run.defeated.push(res.prof.name)
   record = recordWin(record, res.time, run.stage)
   lbWin(stu.college, run.stage)                          // 단과대 랭킹에 한 명 격파 + 이번 연승
-  run.sleep = Math.min(100, res.sleep + 30)                // 수면량은 30만 회복
+  run.sleep = Math.min(100, res.sleep + 30 + upStats(run.ups).nap)   // 수면량은 30(+쪽잠)만 회복
   const next = run.list[run.stage % run.list.length]
-  let n = 3
-  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1}) · ${n}초 뒤 시작`)
+  let n = 3, picked = false
+  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1})` + (picked ? ` · ${n}초 뒤 시작` : ""))
+  // 무기 강화: 셋 중 하나를 고르면 3초 뒤 시작한다 (다 최대면 고르지 않고 바로 센다)
+  const box = $("#up-pick"), choices = rollChoices(run.ups)
+  box.innerHTML = ""; box.classList.remove("done")
+  const nextBtn = $("#b-next")
+  const go = () => {
+    picked = true; nextBtn.disabled = false; nextBtn.textContent = "바로 다음 교수님"
+    $("#up-have").textContent = upSummary(run.ups) ? "지금 강화: " + upSummary(run.ups) : ""
+    info(); nextTimer = setInterval(() => { n--; if (n <= 0) { clearInterval(nextTimer); if (screen === "next") startFight() } else info() }, 1000)
+  }
+  for (const id of choices) {
+    const u = UP[id], lv = (run.ups[id] || 0) + 1, b = document.createElement("button")
+    b.className = "btn up-card"; b.innerHTML = "<b></b><span></span>"
+    b.querySelector("b").textContent = `${u.name} Lv${lv}${lv >= u.max ? " (최대)" : ""}`; b.querySelector("span").textContent = u.desc
+    b.onclick = () => { if (picked) return; run.ups[id] = lv; b.classList.add("picked"); box.classList.add("done"); sfx("skill"); go() }
+    box.append(b)
+  }
+  $(".up-title").hidden = !choices.length
+  $("#up-have").textContent = upSummary(run.ups) ? "지금 강화: " + upSummary(run.ups) : ""
+  if (choices.length) { nextBtn.disabled = true; nextBtn.textContent = "강화를 먼저 고르세요" }
   info()
-  setTimeout(() => { battle = null; show("next") }, 150)
-  nextTimer = setInterval(() => { n--; if (n <= 0) { clearInterval(nextTimer); if (screen === "next") startFight() } else info() }, 1000)
+  setTimeout(() => { battle = null; show("next"); document.activeElement?.blur?.() }, 150)
+  if (!choices.length) go()
 }
 function endRun(kind) {
   clearInterval(nextTimer)
   record = recordRunEnd(record, kind, run.stage)
-  const res = { result: kind, run: { streak: run.stage, defeated: run.defeated, time: run.time, last: run.last, lastCollege: run.lastCollege }, stats: run.stats, stu, record }
+  const res = { result: kind, run: { streak: run.stage, defeated: run.defeated, time: run.time, last: run.last, lastCollege: run.lastCollege, ups: upSummary(run.ups) }, stats: run.stats, stu, record }
   lastRes = res
   const card = makeCard(art, res)
   $("#card").src = card.toDataURL("image/png")
@@ -377,7 +397,9 @@ $("#b-board2").onclick = () => openBoard("result")
 
 function pause() {
   if (!battle || battle.over || battle.paused) return
-  battle.paused = true; show("pause")
+  battle.paused = true
+  $("#pause-ups").textContent = run && upSummary(run.ups) ? "무기 강화: " + upSummary(run.ups) : ""
+  show("pause")
 }
 function resume() { if (!battle) return; battle.paused = false; show("battle"); document.activeElement?.blur?.() }
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause() })   // 앱을 내리면 자동으로 멈춤
@@ -385,7 +407,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pause
 $("#b-fight").onclick = startRun
 $("#b-roster-fight").onclick = () => { useChallenge = false; startRun() }
 $("#b-again").onclick = startRun
-$("#b-next").onclick = () => { clearInterval(nextTimer); startFight() }
+$("#b-next").onclick = () => { if ($("#b-next").disabled) return; clearInterval(nextTimer); startFight() }
 $("#b-stop").onclick = () => endRun("quit")
 $("#b-resume").onclick = resume
 $("#b-quit").onclick = () => { battle = null; endRun("quit") }
