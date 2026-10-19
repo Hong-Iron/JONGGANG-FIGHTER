@@ -1,9 +1,9 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190949"
-import { sfx } from "./sfx.js?v=202610190949"
-import { WEAPON, statsOf } from "./parts.js?v=202610190949"
-import { profTitle } from "./config.js?v=202610190949"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190952"
+import { sfx } from "./sfx.js?v=202610190952"
+import { WEAPON, statsOf } from "./parts.js?v=202610190952"
+import { profTitle } from "./config.js?v=202610190952"
 
 export const W = 180, H = 320
 
@@ -45,7 +45,7 @@ function scaled(b, s) {
 }
 let vibrate = true
 export function setVibrate(v) { vibrate = v }
-export function buzzOnce() { buzz(40) }                               // 진동을 켤 때 한 번 울려 확인시킨다
+export function buzzOnce() { buzz(40, true) }                               // 진동을 켤 때 한 번 울려 확인시킨다
 // 진동: 안드로이드는 Vibration API. 아이폰 Safari(iOS 18+)는 이 API가 없어서, 숨긴 스위치 체크박스를 눌러 생기는 햅틱을 쓴다.
 // 아이폰 햅틱은 화면을 누른 그 순간에만 나므로, 터치 없이 맞을 때는 진동이 없다
 let hapticEl = null
@@ -58,10 +58,14 @@ function iosTap() {
     hapticEl.click()
   } catch {}
 }
-function buzz(p) {
+// 아이폰은 손가락을 뗄 때(touchend)만 사용자 동작으로 쳐 준다. 게임은 누르는 순간(pointerdown)에 반응하므로,
+// 진동이 필요하면 표시만 해 두고 0.4초 안에 손을 뗄 때 햅틱을 낸다
+let iosWant = -1
+if (typeof document !== "undefined") for (const ev of ["touchend", "pointerup"]) document.addEventListener(ev, () => { if (iosWant > 0 && performance.now() - iosWant < 400) { iosWant = -1; iosTap() } }, true)
+function buzz(p, now = false) {
   if (!vibrate) return
   if (navigator.vibrate) { try { navigator.vibrate(p) } catch {} ; return }
-  iosTap()
+  if (now) iosTap(); else iosWant = performance.now()
 }
 
 // 학생 공격 동작: [자세, 길이(초), 맞는 순간]. 빠르게 연타하면 휘두르기 준비 자세를 건너뛴다

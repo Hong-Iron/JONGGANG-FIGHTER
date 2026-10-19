@@ -25,6 +25,7 @@ async function run(ios) {
   b.W = { ...b.W, crit: 1 }; for (let i = 0; i < 3; i++) { b.lastTap = -9; b.tap() }      // 치명타 3번
   b.caff = 100; b.skill(0)                                                               // 스킬
   b.bind = 0; b.cine = null; b.startAttack(); b.attack.hitAt = 0.02; for (let i = 0; i < 10; i++) b.update(0.02)   // 맞기
+  if (ios) { const c0 = clicks; w.document.dispatchEvent(new w.Event("touchend")); log.push("ios touchend right after hit -> label clicks +" + (clicks - c0)); b.lastTap = -9; b.tap(); await wait(600); const c1 = clicks; w.document.dispatchEvent(new w.Event("touchend")); log.push("ios touchend 0.6s later -> +" + (clicks - c1)) }
   log.push((ios ? "ios" : "android") + ": vibrate " + calls.join(" ") + " | label clicks " + clicks + " | screen still " + w.__jg.screen + " | switch el " + !!w.document.querySelector('input[switch]'))
 }
 try { await run(false); await run(true) } catch (e) { log.push("ERR " + e.stack) }

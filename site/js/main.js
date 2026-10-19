@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190949"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190949"
-import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190949"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190949"
-import { makeCard } from "./card.js?v=202610190949"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190949"
-import { lbWin, lbBoard } from "./lb.js?v=202610190949"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190949"
+import { loadArtSource, buildArt } from "./art.js?v=202610190952"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190952"
+import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190952"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190952"
+import { makeCard } from "./card.js?v=202610190952"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190952"
+import { lbWin, lbBoard } from "./lb.js?v=202610190952"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190952"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
