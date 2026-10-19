@@ -1,6 +1,6 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
 // res.result: "lose"(쓰러짐) | "timeout"(3분 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191026"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191042"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 

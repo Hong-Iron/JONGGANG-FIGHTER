@@ -1,13 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610191026"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610191026"
-import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191026"
-import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191026"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191026"
-import { makeCard } from "./card.js?v=202610191026"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191026"
-import { lbWin, lbBoard } from "./lb.js?v=202610191026"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191026"
+import { loadArtSource, buildArt } from "./art.js?v=202610191042"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610191042"
+import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191042"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191042"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191042"
+import { makeCard } from "./card.js?v=202610191042"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191042"
+import { lbWin, lbBoard } from "./lb.js?v=202610191042"
+import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191042"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -466,7 +466,7 @@ function prepKakao(res) {                                                 // 누
 }
 const shareText = (res) => res.run.streak >= 1 ? `교수님 ${res.run.streak}명 연속 격파! (${res.run.streak}연승) 내 기록 깨 봐` : `${res.run.last}님에게 바로 졌다… 복수해 줘`
 $("#b-kakao").onclick = async () => {
-  const res = lastRes, n = res.run.streak, url = rosterLink(run.list, n)
+  const res = lastRes, n = res.run.streak, url = rosterLink(run.list, n, 600), home = gameHome()   // 카톡 메시지 크기 제한 때문에 짧게
   if (await loadKakao()) {
     const img = await Promise.race([res.kakaoImage, new Promise((r) => setTimeout(() => r(null), 4000))])
     try {
@@ -476,7 +476,7 @@ $("#b-kakao").onclick = async () => {
           title: n >= 1 ? `종강 파이터 ${n}연승` : "종강 파이터",
           description: shareText(res),
           imageUrl: img || new URL("og.png", location.href).toString(), imageWidth: img ? 1080 : 1200, imageHeight: img ? 1350 : 630,
-          link: { mobileWebUrl: url, webUrl: url },
+          link: { mobileWebUrl: home, webUrl: home },                  // 카드를 누르면 첫 화면, 버튼은 결투장
         },
         buttons: [{ title: "나도 해보기", link: { mobileWebUrl: url, webUrl: url } }],
       })

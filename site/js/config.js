@@ -1,4 +1,4 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610191026"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610191042"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
@@ -58,7 +58,7 @@ export const PRESETS = [
   { name: "박OO", college: "soc", age: "young", eyes: "sharp", lines: ["이 정도는 다들 하는데?", "제출 기한은 어제였네", "질문은 수업 끝나고"], glasses: "tint", hair: "pomade", hcolor: "black", outfit: "suit", neck: "nametag", hand: "mic", desk: "ipad", body: "big" },
   { name: "최OO", college: "art", lines: ["이게 최선인가?", "다시 생각해 오게", "크리틱 시작하지"], gender: "f", age: "young", eyes: "sharp", glasses: "horn", hair: "bob", hcolor: "black", outfit: "turtle", neck: "scarf", hand: "espresso", hat: "beret", face: "stone" },
   { name: "이OO", college: "hum", age: "senior", eyes: "droopy", lines: ["자네, 원문은 읽었나?", "그 해석은 틀렸네", "레포트는 30장이네"], glasses: "chain", hair: "side", outfit: "cardigan", hand: "chalk", desk: "thermos", face: "kind", beard: "full", body: "thin" },
-  { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },,
+  { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },
   { name: "윤OO", college: "nur", lines: ["활력징후 다시 재 와요", "인계는 5분 안에", "케이스 스터디 50장"], gender: "f", age: "middle", eyes: "sharp", glasses: "metal", hair: "updo", hcolor: "black", outfit: "cardigan", neck: "nametag", hand: "pad", desk: "thermos", face: "stone" },
   { name: "강OO", college: "med", lines: ["그건 국시에 안 나오나?", "이건 그냥 외우게", "다음 주 땡시험이네"], age: "senior", eyes: "narrow", glasses: "chain", hair: "side", hcolor: "salt", outfit: "labcoat", neck: "bluetie", hand: "stick", desk: "books", face: "smirk" }
 ]
@@ -91,17 +91,41 @@ const expand = (j) => {
 
 export function encodeProf(p) { return toB64({ ...compact(p), v: 1 }) }
 export function decodeProf(code) { try { const j = fromB64(code, 2000); return j ? expand(j) : null } catch { return null } }
-export function encodeRoster(list) { return toB64({ v: 2, r: sanitizeRoster(list).map(compact) }) }
+// 목록 링크 3판: JSON 배열. 기본 교수님과 똑같으면 번호 하나, 아니면 [이름, 선택지 문자열(키마다 36진수 한 글자), 말버릇…].
+// 말버릇이 기본값이면 뺀다. 카카오톡 공유는 메시지 크기 제한(SDK가 1만 자를 넘으면 거부)이 있어 짧아야 한다
+const xstr = (s) => PROF_KEYS.map((k) => Math.max(0, keys(PROF_OPTS[k]).indexOf(s[k])).toString(36)).join("")
+const sameLines = (a) => a.length === DEFAULT_LINES.length && a.every((l, i) => l === DEFAULT_LINES[i])
+const PRESET_SIG = () => PRESETS.map((p) => { const s = sanitizeProf(p); return s.name + "|" + xstr(s) + "|" + s.lines.join("|") })
+function pack(p, noLines) {
+  const s = sanitizeProf(p), sig = s.name + "|" + xstr(s) + "|" + s.lines.join("|"), i = PRESET_SIG().indexOf(sig)
+  if (i >= 0) return i
+  return [s.name, xstr(s), ...(noLines || sameLines(s.lines) ? [] : s.lines)]
+}
+function unpack(e) {
+  if (typeof e === "number") return PRESETS[e] ? sanitizeProf(PRESETS[e]) : null
+  if (!Array.isArray(e)) return null
+  const [name, x, ...lines] = e, p = { name, lines: lines.length ? lines : DEFAULT_LINES.slice() }
+  PROF_KEYS.forEach((k, i) => { const v = PROF_OPTS[k][parseInt(String(x || "")[i] ?? "", 36)]; if (v) p[k] = v[0] })
+  return sanitizeProf(p)
+}
+export function encodeRoster(list, noLines = false) { return toB64(sanitizeRoster(list).map((p) => pack(p, noLines))) }
 export function decodeRoster(code) {
-  try { const j = fromB64(code, 6000); return j && Array.isArray(j.r) && j.r.length ? j.r.slice(0, ROSTER_MAX).map(expand) : null } catch { return null }
+  try {
+    const j = fromB64(code, 6000)
+    if (Array.isArray(j)) { const out = j.slice(0, ROSTER_MAX).map(unpack).filter(Boolean); return out.length ? out : null }   // 3판
+    return j && Array.isArray(j.r) && j.r.length ? j.r.slice(0, ROSTER_MAX).map(expand) : null                                 // 2판
+  } catch { return null }
 }
-// 결투장 링크: 교수님 목록 전체 + 내 연승
-export function rosterLink(list, streak = 0) {
+// 결투장 링크: 교수님 목록 + 내 연승. maxLen을 주면 넘을 때 말버릇을 빼고, 그래도 길면 뒤 교수님부터 줄인다
+export function rosterLink(list, streak = 0, maxLen = Infinity) {
   const u = new URL(location.href); u.search = ""; u.hash = ""
-  u.searchParams.set("r", encodeRoster(list))
-  if (streak > 0) u.searchParams.set("s", String(Math.min(999, Math.floor(streak))))
-  return u.toString()
+  const make = (l, noLines) => { u.search = ""; u.searchParams.set("r", encodeRoster(l, noLines)); if (streak > 0) u.searchParams.set("s", String(Math.min(999, Math.floor(streak)))); return u.toString() }
+  let l = sanitizeRoster(list), url = make(l, false)
+  if (url.length > maxLen) url = make(l, true)
+  while (url.length > maxLen && l.length > 1) { l = l.slice(0, -1); url = make(l, true) }
+  return url
 }
+export const gameHome = () => { const u = new URL(location.href); u.search = ""; u.hash = ""; return u.toString() }
 export function profLink(p, streak = 0) { return rosterLink([p], streak) }
 // 링크에 실린 친구의 연승 (숫자만, 0~999)
 export function decodeStreak(v) { const n = Number(String(v ?? "").replace(/[^0-9]/g, "").slice(0, 3)); return n > 0 ? n : 0 }

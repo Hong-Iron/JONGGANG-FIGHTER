@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// 결투장 링크 3판: 기본 교수님은 번호, 바꾼 교수님은 짧은 배열. 2판 링크도 읽는지, 길이 제한(maxLen)에서 줄이는지
+import { PRESETS, DEFAULT_LINES, sanitizeProf, encodeRoster, decodeRoster, rosterLink, PROF_OPTS } from "./js/config.js"
+const log = []
+try {
+  const same = (a, b) => JSON.stringify(a.map(sanitizeProf)) === JSON.stringify(b.map(sanitizeProf))
+  const presets = PRESETS.map(sanitizeProf)
+  const c1 = encodeRoster(presets); log.push("presets x" + presets.length + ": code " + c1.length + " chars, round trip " + same(decodeRoster(c1), presets) + ", link " + rosterLink(presets, 3).length)
+  const custom = Array.from({ length: 8 }, (_, i) => sanitizeProf({ ...PRESETS[i % PRESETS.length], name: "홍길" + i, lines: ["말버릇 하나 " + i, "두 번째 말버릇 길게 써 봄", "세 번째"], hair: "perm", gender: "f", age: "young", hat: "beret", desk: "books" }))
+  const c2 = encodeRoster(custom); log.push("custom x8: code " + c2.length + ", round trip " + same(decodeRoster(c2), custom) + ", full link " + rosterLink(custom, 5).length)
+  for (const max of [600, 300]) { const u = rosterLink(custom, 5, max), back = decodeRoster(new URL(u).searchParams.get("r")); log.push(`maxLen ${max}: link ${u.length}, profs ${back.length}, lines kept ${JSON.stringify(back[0].lines) !== JSON.stringify(DEFAULT_LINES)}, look kept ${back[0].hair}/${back[0].gender}/${back[0].hat}`) }
+  // 2판(옛 링크)
+  const keys = (o) => o.map((x) => x[0]), PK = Object.keys(PROF_OPTS)
+  const old = { v: 2, r: [{ n: "홍OO", l: ["하하"], x: PK.map((k) => k === "glasses" ? keys(PROF_OPTS[k]).indexOf("horn") : 0) }] }
+  const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(old)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+  const d = decodeRoster(b64); log.push("v2 link: " + d.length + " prof " + d[0].name + " glasses " + d[0].glasses + " lines " + JSON.stringify(d[0].lines))
+  log.push("garbage: " + decodeRoster("abc") + " / " + decodeRoster(btoa("[99,\"x\"]")))
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

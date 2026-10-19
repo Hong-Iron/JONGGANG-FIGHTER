@@ -1,10 +1,10 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191026"
-import { sfx } from "./sfx.js?v=202610191026"
-import { WEAPON, statsOf } from "./parts.js?v=202610191026"
-import { profTitle } from "./config.js?v=202610191026"
-import { upStats } from "./upgrades.js?v=202610191026"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191042"
+import { sfx } from "./sfx.js?v=202610191042"
+import { WEAPON, statsOf } from "./parts.js?v=202610191042"
+import { profTitle } from "./config.js?v=202610191042"
+import { upStats } from "./upgrades.js?v=202610191042"
 
 export const W = 180, H = 320
 
