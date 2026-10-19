@@ -1,0 +1,46 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// 실력별 봇으로 4분 30초 도전을 빨리 감아 돌려, 몇 명까지 이기는지 센다 (등급 기준을 정하려고)
+import { loadArtSource, buildArt } from "./js/art.js"
+import { Battle, RUN_TIME, setVibrate } from "./js/battle.js"
+import { PRESETS, DEFAULT_STU, sanitizeProf, sanitizeStu } from "./js/config.js"
+import { rollChoices } from "./js/upgrades.js"
+await loadArtSource(); setVibrate(false)
+const art = buildArt({ prof: sanitizeProf(PRESETS[0]), stu: DEFAULT_STU })
+const LEVELS = { 초보: { tps: 5, hit: 0.5, react: [0.35, 0.7], skills: false }, 초보2: { tps: 6, hit: 0.6, react: [0.3, 0.6], skills: false }, 느긋: { tps: 6, hit: 0.7, react: [0.3, 0.55], skills: true }, 피곤: { tps: 7, hit: 0.75, react: [0.28, 0.5], skills: true }, 보통: { tps: 8, hit: 0.75, react: [0.25, 0.5], skills: true }, 고수: { tps: 11, hit: 0.92, react: [0.15, 0.35], skills: true } }
+const rnd = (a, b) => a + Math.random() * (b - a)
+function runOnce(lv, weapon) {
+  const stu = sanitizeStu({ ...DEFAULT_STU, college: "eng", weapon }), list = PRESETS.map(sanitizeProf)
+  let stage = 0, sleep = 100, timeLeft = RUN_TIME, ups = {}, end = "timeout"
+  while (true) {
+    let res = null
+    const b = new Battle({ art, prof: list[stage % list.length], stu, stage, sleep, ups, timeLeft, onEnd: (r) => (res = r) })
+    b.ex = 0
+    let nextTap = 0, plan = null
+    for (let step = 0; step < 60 * 400 && !res; step++) {
+      const dt = 0.02; b.update(dt)
+      if (b.over) continue
+      const a = b.attack
+      if (a && !a.done && a.appear != null && a.e >= a.appear) {
+        if (!plan || plan.a !== a) plan = { a, at: a.appear + rnd(...lv.react), will: Math.random() < lv.hit }
+        if (plan.will && a.e >= plan.at && a.e < a.hitAt) { b.counter(); plan.will = false }
+      }
+      if (b.t >= nextTap) { b.tap(); nextTap = b.t + 1 / lv.tps * rnd(0.85, 1.15) }
+      if (lv.skills) for (let i = 2; i >= 0; i--) if (b.caff >= b.SK[i].cost && b.cd[b.SK[i].id] <= 0 && Math.random() < 0.02) b.skill(i)
+    }
+    if (!res) { end = "stuck"; break }
+    timeLeft = res.timeLeft
+    if (res.result !== "win") { end = res.result; break }
+    stage++; sleep = Math.min(100, res.sleep + 30)
+    const c = rollChoices(ups); if (c.length) ups[c[0]] = (ups[c[0]] || 0) + 1
+  }
+  return { stage, end }
+}
+const log = []; const T0 = performance.now()
+for (const [name, lv] of Object.entries(LEVELS)) for (const weapon of ["keyboard"]) {
+  const rs = Array.from({ length: 8 }, () => runOnce(lv, weapon)), st = rs.map((r) => r.stage).sort((a, b) => a - b)
+  const ends = rs.reduce((m, r) => ((m[r.end] = (m[r.end] || 0) + 1), m), {})
+  const t1 = performance.now()
+  log.push(`${name} ${weapon}: 연승 ${st.join(",")} | 중간값 ${st[4]} | 끝 ${JSON.stringify(ends)} | ${((performance.now() - T0) / 1000).toFixed(0)}s`); await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+}
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

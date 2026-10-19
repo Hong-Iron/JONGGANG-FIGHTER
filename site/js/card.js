@@ -1,29 +1,27 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
 // res.result: "lose"(쓰러짐) | "timeout"(도전 전체 4분 30초 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191101"
+import { gradeOf } from "./config.js?v=202610191216"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191216"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
 const LAB = { eng: "제1공학관 지하 랩실", hum: "인문관 고문헌 열람실", soc: "사회관 설문 분석실", sci: "자연관 지하 실험실", art: "실기동 크리틱 룸", nur: "간호관 시뮬레이션 실습실", med: "의대 해부학 실습실" }
 const STU_C = { eng: "공대생 ", hum: "인문대생 ", soc: "사회대생 ", sci: "자연대생 ", art: "예대생 ", nur: "간호대생 ", med: "의대생 " }
-function doc(res) {
-  const n = res.run.streak, last = res.run.last, t = res.run.time
-  const lab = LAB[res.run.lastCollege] || LAB.eng
-  const mm = Math.floor(t / 60), ss = Math.floor(t % 60)
-  if (res.result === "quit") {
-    if (n === 0) return { title: "휴학계 수리 통지서", stamp: "수리", alive: true,
-      body: "귀하는 한 분의 교수님도 넘지 못하고 스스로 강의실을 나섰으므로 휴학을 허가합니다. 다음 학기에 다시 오십시오." }
-    return { title: "수강철회 승인서", stamp: "승인", alive: true,
-      body: `귀하는 교수님 ${n}명을 연달아 물리치고 (총 ${mm}분 ${ss}초) 스스로 강의실을 나섰으므로 수강철회를 승인합니다.` }
-  }
-  if (res.result === "timeout") return { title: "계절학기 등록금 고지서", stamp: "미달", alive: false,
-    body: n ? `귀하는 교수님 ${n}명을 넘었으나 제한 시간 4분 30초 안에 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.`
-      : `귀하는 4분 30초 동안 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.` }
-  return { title: "대학원 강제 입학 통지서", stamp: "입학", alive: false,
-    body: n ? `귀하는 교수님 ${n}명을 연달아 물리쳤으나 ${last}에게 쓰러져 ${lab}에 무기한 수감되었습니다.`
-      : `귀하는 다크서클 5단계 상태로 쓰러져 ${lab}에 무기한 수감되었습니다. (남은 수면량 0%)` }
+// 학점별 공문: 제목, 도장, 판정 문장
+const VERDICT = {
+  "A+": { title: "대학원 납치 통지서", stamp: "납치" }, A: { title: "우수 성적 통지서", stamp: "우수", say: "성적 A로 이수를 인정하고 장학금 심사에 올립니다." },
+  B: { title: "합격 통지서", stamp: "합격", say: "성적 B로 이수를 인정합니다." }, C: { title: "합격 통지서", stamp: "턱걸이", say: "턱걸이로 C를 드립니다. 다음 학기엔 분발하십시오." },
+  D: { title: "성적 미달 통지서", stamp: "미달", say: "성적 미달(D)로 계절학기 등록을 명합니다." }, F: { title: "재수강 통지서", stamp: "재수강", say: "성적 F로 다음 학기 재수강을 명합니다." },
 }
-
+function doc(res) {
+  const n = res.run.streak, last = res.run.last, lab = LAB[res.run.lastCollege] || LAB.eng
+  const G = gradeOf(n), V = VERDICT[G.g]
+  const how = res.result === "timeout" ? `4분 30초 동안 교수님 ${n}명을 넘었습니다.`
+    : res.result === "quit" ? (n ? `교수님 ${n}명을 넘고 스스로 강의실을 나섰습니다.` : "한 분의 교수님도 넘지 못하고 스스로 강의실을 나섰습니다.")
+    : n ? `교수님 ${n}명을 넘은 뒤 ${last}에게 쓰러졌습니다.` : `${last}에게 바로 쓰러졌습니다.`
+  if (G.g === "A+") return { ...V, grade: G, alive: false, body: `귀하는 교수님 ${n}명을 넘을 만큼 지나치게 우수하여 ${last}가 ${lab}로 납치해 갔습니다. 졸업 예정일은 미정입니다.` }
+  return { ...V, grade: G, alive: n >= 3, body: `귀하는 ${how} ${V.say}` }
+}
 export function makeCard(art, res) {
   const w = 180, h = 225, c = document.createElement("canvas"); c.width = w; c.height = h
   const x = c.getContext("2d"); x.imageSmoothingEnabled = false
@@ -44,7 +42,7 @@ export function makeCard(art, res) {
   const por = art[`por_${d.alive ? 2 : 5}_${d.alive ? "win" : "hurt"}`]
   x.fillStyle = "#c5dcf2"; x.fillRect(94, 44, 76, 66)
   x.drawImage(por, 0, 0, 34, 34, 115, 46, 34, 34)
-  drawText(x, d.alive ? "생존" : "기절", 132, 81, { font: "s9", color: d.alive ? "#1d6b3f" : R, align: "c" })
+  drawText(x, `학점 ${d.grade.g}`, 132, 81, { font: "s9", bold: true, color: d.alive ? "#1d6b3f" : R, align: "c" })
   drawText(x, `${n}연승`, 132, 92, { font: "b11", color: n ? R : G, align: "c" })
   x.fillStyle = K; box(x, 93, 43, 78, 68)
   drawFit(x, res.run.last, 48, 112, 78, { font: "s7", color: K, align: "c" })

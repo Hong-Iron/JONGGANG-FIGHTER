@@ -1,13 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610191101"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610191101"
-import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191101"
-import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191101"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191101"
-import { makeCard } from "./card.js?v=202610191101"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191101"
-import { lbWin, lbBoard } from "./lb.js?v=202610191101"
-import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191101"
+import { loadArtSource, buildArt } from "./art.js?v=202610191216"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610191216"
+import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191216"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191216"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191216"
+import { makeCard } from "./card.js?v=202610191216"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191216"
+import { lbWin, lbBoard } from "./lb.js?v=202610191216"
+import { COLLEGES, KAKAO_KEY, gameHome, gradeOf, nextGrade, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191216"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -267,6 +267,8 @@ function startRun() {
   run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college, ups: {}, timeLeft: RUN_TIME }
   startFight()
 }
+// 지금 학점과 다음 학점까지 남은 교수님 수: "지금 B(합격), A까지 3명"
+const gradeLine = (n) => { const g = gradeOf(n), nx = nextGrade(n); return `지금 ${g.g}(${g.word})` + (nx ? `, ${nx.g}까지 ${nx.min - n}명` : "") }
 const clock = (s) => { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}` }
 function startFight() {
   clearInterval(nextTimer)
@@ -292,7 +294,7 @@ function endFight(res) {
   run.sleep = Math.min(100, res.sleep + 30 + upStats(run.ups).nap)   // 수면량은 30(+쪽잠)만 회복
   const next = run.list[run.stage % run.list.length]
   let n = 3, picked = false
-  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1}) · 남은 시간 ${clock(run.timeLeft)}` + (picked ? ` · ${n}초 뒤 시작` : ""))
+  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1}) · 남은 시간 ${clock(run.timeLeft)} · ${gradeLine(run.stage)}` + (picked ? ` · ${n}초 뒤 시작` : ""))
   // 무기 강화: 셋 중 하나를 고르면 3초 뒤 시작한다 (다 최대면 고르지 않고 바로 센다)
   const box = $("#up-pick"), choices = rollChoices(run.ups)
   box.innerHTML = ""; box.classList.remove("done")
@@ -465,7 +467,7 @@ function prepKakao(res) {                                                 // 누
     return out.infos.original.url
   }).catch(() => null)
 }
-const shareText = (res) => res.run.streak >= 1 ? `교수님 ${res.run.streak}명 연속 격파! (${res.run.streak}연승) 내 기록 깨 봐` : `${res.run.last}님에게 바로 졌다… 복수해 줘`
+const shareText = (res) => { const n = res.run.streak, g = gradeOf(n); return n >= 1 ? `4분 30초 동안 교수님 ${n}명 격파! 학점 ${g.g} (${g.word}) 내 기록 깨 봐` : `${res.run.last}님에게 바로 졌다… 학점 F. 복수해 줘` }
 $("#b-kakao").onclick = async () => {
   const res = lastRes, n = res.run.streak, url = rosterLink(run.list, n, 600), home = gameHome()   // 카톡 메시지 크기 제한 때문에 짧게
   if (await loadKakao()) {
@@ -474,7 +476,7 @@ $("#b-kakao").onclick = async () => {
       window.Kakao.Share.sendDefault({
         objectType: "feed",
         content: {
-          title: n >= 1 ? `종강 파이터 ${n}연승` : "종강 파이터",
+          title: `종강 파이터 ${n}연승 · 학점 ${gradeOf(n).g}`,
           description: shareText(res),
           imageUrl: img || new URL("og.png", location.href).toString(), imageWidth: img ? 1080 : 1200, imageHeight: img ? 1350 : 630,
           link: { mobileWebUrl: home, webUrl: home },                  // 카드를 누르면 첫 화면, 버튼은 결투장

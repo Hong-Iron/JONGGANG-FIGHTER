@@ -1,4 +1,4 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610191101"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610191216"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
@@ -63,6 +63,14 @@ export const PRESETS = [
   { name: "강OO", college: "med", lines: ["그건 국시에 안 나오나?", "이건 그냥 외우게", "다음 주 땡시험이네"], age: "senior", eyes: "narrow", glasses: "chain", hair: "side", hcolor: "salt", outfit: "labcoat", neck: "bluetie", hand: "stick", desk: "books", face: "smirk" }
 ]
 export const ROSTER_MAX = 8
+// 학점: 4분 30초 도전에서 이긴 교수님 수로 매긴다. 기준은 실력별 봇 시뮬레이션(tools/test_sim.html)에서 정했다
+// (초보 1~2, 스킬 쓰는 느긋한 사람 ~10, 보통 ~15, 고수 ~19). A+는 너무 잘해서 대학원에 납치된다
+export const GRADES = [
+  { min: 15, g: "A+", word: "대학원 납치" }, { min: 10, g: "A", word: "우수" }, { min: 6, g: "B", word: "합격" },
+  { min: 3, g: "C", word: "턱걸이" }, { min: 1, g: "D", word: "미달" }, { min: 0, g: "F", word: "재수강" },
+]
+export const gradeOf = (n) => GRADES.find((t) => n >= t.min)
+export const nextGrade = (n) => [...GRADES].reverse().find((t) => t.min > n) || null
 export function sanitizeRoster(list) {
   const arr = Array.isArray(list) ? list.slice(0, ROSTER_MAX).filter((p) => p && typeof p === "object").map(sanitizeProf) : []
   return arr.length ? arr : PRESETS.map((p) => sanitizeProf(p))
