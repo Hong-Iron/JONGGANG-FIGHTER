@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190952"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190952"
-import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190952"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190952"
-import { makeCard } from "./card.js?v=202610190952"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190952"
-import { lbWin, lbBoard } from "./lb.js?v=202610190952"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190952"
+import { loadArtSource, buildArt } from "./art.js?v=202610190955"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190955"
+import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190955"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190955"
+import { makeCard } from "./card.js?v=202610190955"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190955"
+import { lbWin, lbBoard } from "./lb.js?v=202610190955"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190955"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -404,7 +404,12 @@ const syncSound = () => {
 }
 syncSound()
 const toggleSound = () => { unlock(); setMuted(!isMuted()); syncSound() }
-const toggleVib = () => { vibOn = !vibOn; try { localStorage.setItem("jg-vib", vibOn ? "1" : "0") } catch {} ; setVibrate(vibOn); if (vibOn) buzzOnce(); syncSound() }
+const toggleVib = () => { vibOn = !vibOn; try { localStorage.setItem("jg-vib", vibOn ? "1" : "0") } catch {} ; setVibrate(vibOn); syncSound()
+  if (!vibOn) return
+  const r = buzzOnce()
+  if (r === "sent") toast("진동을 보냈어요. 안 울리면 폰의 무음·방해 금지 모드를 꺼 보세요")
+  else if (r === "blocked") toast("브라우저가 진동을 막았어요. 화면을 한 번 누른 뒤 다시 켜 보세요")
+}
 for (const id of ["#b-sound", "#b-sound2"]) $(id).onclick = toggleSound
 for (const id of ["#b-vib", "#b-vib2"]) $(id).onclick = toggleVib
 
