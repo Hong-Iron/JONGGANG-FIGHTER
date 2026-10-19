@@ -1,6 +1,6 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
-// res.result: "lose"(쓰러짐) | "timeout"(3분 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191042"
+// res.result: "lose"(쓰러짐) | "timeout"(도전 전체 4분 30초 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610191050"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
@@ -17,8 +17,8 @@ function doc(res) {
       body: `귀하는 교수님 ${n}명을 연달아 물리치고 (총 ${mm}분 ${ss}초) 스스로 강의실을 나섰으므로 수강철회를 승인합니다.` }
   }
   if (res.result === "timeout") return { title: "계절학기 등록금 고지서", stamp: "미달", alive: false,
-    body: n ? `귀하는 교수님 ${n}명을 넘었으나 ${last}를 3분 안에 설득하지 못했으므로 계절학기 등록을 명합니다.`
-      : `귀하는 3분 동안 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.` }
+    body: n ? `귀하는 교수님 ${n}명을 넘었으나 제한 시간 4분 30초 안에 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.`
+      : `귀하는 4분 30초 동안 ${last}를 설득하지 못했으므로 계절학기 등록을 명합니다.` }
   return { title: "대학원 강제 입학 통지서", stamp: "입학", alive: false,
     body: n ? `귀하는 교수님 ${n}명을 연달아 물리쳤으나 ${last}에게 쓰러져 ${lab}에 무기한 수감되었습니다.`
       : `귀하는 다크서클 5단계 상태로 쓰러져 ${lab}에 무기한 수감되었습니다. (남은 수면량 0%)` }

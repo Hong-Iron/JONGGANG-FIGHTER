@@ -1,13 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610191042"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610191042"
-import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191042"
-import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191042"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191042"
-import { makeCard } from "./card.js?v=202610191042"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191042"
-import { lbWin, lbBoard } from "./lb.js?v=202610191042"
-import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191042"
+import { loadArtSource, buildArt } from "./art.js?v=202610191050"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610191050"
+import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191050"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191050"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191050"
+import { makeCard } from "./card.js?v=202610191050"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191050"
+import { lbWin, lbBoard } from "./lb.js?v=202610191050"
+import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191050"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -264,15 +264,16 @@ function startRun() {
   if (!stu.college) return askCollege(startRun)
   document.activeElement?.blur?.()                       // 포커스 남은 버튼이 Enter·Space로 다시 눌리지 않게
   const list = active()
-  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college, ups: {} }
+  run = { list, stage: 0, defeated: [], time: 0, sleep: 100, stats: TOTAL(), last: profTitle(list[0]), lastCollege: list[0].college, ups: {}, timeLeft: RUN_TIME }
   startFight()
 }
+const clock = (s) => { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}` }
 function startFight() {
   clearInterval(nextTimer)
   const p = run.list[run.stage % run.list.length]
   run.last = profTitle(p); run.lastCollege = p.college
   rebuild(p)
-  battle = new Battle({ art, prof: p, stu, stage: run.stage, sleep: run.sleep, ups: run.ups, onEnd: endFight, onPause: pause })
+  battle = new Battle({ art, prof: p, stu, stage: run.stage, sleep: run.sleep, ups: run.ups, timeLeft: run.timeLeft, onEnd: endFight, onPause: pause })
   battle.setExtra(EX)
   document.activeElement?.blur?.()
   show("battle")
@@ -283,7 +284,7 @@ function addStats(s) {
   t.maxCombo = Math.max(t.maxCombo, s.maxCombo || 0)
 }
 function endFight(res) {
-  addStats(res.stats); run.time += res.time
+  addStats(res.stats); run.time += res.time; run.timeLeft = Math.max(0, res.timeLeft ?? run.timeLeft - res.time)
   if (res.result !== "win") return endRun(res.result)
   run.stage++; run.defeated.push(res.prof.name)
   record = recordWin(record, res.time, run.stage)
@@ -291,7 +292,7 @@ function endFight(res) {
   run.sleep = Math.min(100, res.sleep + 30 + upStats(run.ups).nap)   // 수면량은 30(+쪽잠)만 회복
   const next = run.list[run.stage % run.list.length]
   let n = 3, picked = false
-  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1})` + (picked ? ` · ${n}초 뒤 시작` : ""))
+  const info = () => ($("#next-info").textContent = `${run.stage}연승! 수면량 ${run.sleep}%로 회복 · 다음: ${profTitle(next)} (난이도 ${run.stage + 1}) · 남은 시간 ${clock(run.timeLeft)}` + (picked ? ` · ${n}초 뒤 시작` : ""))
   // 무기 강화: 셋 중 하나를 고르면 3초 뒤 시작한다 (다 최대면 고르지 않고 바로 센다)
   const box = $("#up-pick"), choices = rollChoices(run.ups)
   box.innerHTML = ""; box.classList.remove("done")

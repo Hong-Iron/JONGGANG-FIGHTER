@@ -1,12 +1,13 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191042"
-import { sfx } from "./sfx.js?v=202610191042"
-import { WEAPON, statsOf } from "./parts.js?v=202610191042"
-import { profTitle } from "./config.js?v=202610191042"
-import { upStats } from "./upgrades.js?v=202610191042"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191050"
+import { sfx } from "./sfx.js?v=202610191050"
+import { WEAPON, statsOf } from "./parts.js?v=202610191050"
+import { profTitle } from "./config.js?v=202610191050"
+import { upStats } from "./upgrades.js?v=202610191050"
 
 export const W = 180, H = 320
+export const RUN_TIME = 270                                           // 도전 전체 제한 시간 4분 30초 (교수님마다 따로가 아니라 이어서 줄어든다)
 
 // 늘어난 천장: 각진 천장 타일과 형광등 (세로로 긴 폰 화면에서만)
 export function drawCeiling(x, top, ex, ox = 0) {
@@ -113,7 +114,7 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)]
 const inRect = (x, y, rx, ry, rw, rh) => x >= rx && x < rx + rw && y >= ry && y < ry + rh
 
 export class Battle {
-  constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100, ups = {} }) {
+  constructor({ art, prof, stu, onEnd, onPause, stage = 0, sleep = 100, ups = {}, timeLeft = RUN_TIME }) {
     this.art = art; this.prof = prof; this.stu = stu; this.onEnd = onEnd; this.onPause = onPause
     this.stage = stage
     this.W = WEAPON[stu.weapon] || WEAPON.keyboard
@@ -125,7 +126,7 @@ export class Battle {
     this.L = L
     this.t = 0; this.freeze = 0
     this.hpMax = L.hp; this.hp = L.hp; this.trail = L.hp
-    this.sleep = Math.max(1, Math.min(100, sleep)); this.caff = 40; this.timeLeft = 180; this.paused = false
+    this.sleep = Math.max(1, Math.min(100, sleep)); this.caff = 40; this.timeLeft = this.time0 = Math.max(1, timeLeft); this.paused = false
     this.phase = 1; this.cine = null
     this.attack = null; this.nextAttack = 0.6
     this.intro = 1.1; this.anim = null; this.quiz = null; this.quizzes = 0
@@ -329,7 +330,8 @@ export class Battle {
     this.t += dt
     if (this.over) { this.overT += dt; this.updateOver(dt); return }
     if (this.cine) { this.updateCine(dt); return }
-    this.timeLeft -= dt; this.hintT -= dt
+    if (this.intro <= 0) this.timeLeft -= dt                          // 시작 연출 동안은 시계를 세지 않는다
+    this.hintT -= dt
     if (this.intro > 0) { const before = this.intro; this.intro -= dt; if (before > 0.5 && this.intro <= 0.5) sfx("stamp") }
     if (this.anim) {
       const a = this.anim
@@ -538,8 +540,8 @@ export class Battle {
   updateOver() {
     if (!this.ended && this.overT > 2.4) {
       this.ended = true
-      const used = 180 - this.timeLeft
-      this.onEnd({ result: this.over, time: used, sleep: Math.round(this.sleep), stats: this.stats, prof: this.prof, stu: this.stu, stage: this.stage })
+      const used = this.time0 - this.timeLeft
+      this.onEnd({ result: this.over, time: used, timeLeft: this.timeLeft, sleep: Math.round(this.sleep), stats: this.stats, prof: this.prof, stu: this.stu, stage: this.stage })
     }
   }
 
