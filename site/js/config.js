@@ -1,8 +1,8 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190828"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610190921"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
-export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"]]
+export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"], ["nur", "간호대", "간호대학"], ["med", "의대", "의과대학"]]
 export const STU_OPTS = PARTS                             // 묶음과 스탯은 parts.js
 // 카카오톡 공유: 카카오 앱 "종강 파이터"의 JavaScript 키 (공개 키, 사이트 도메인 https://hong-iron.github.io 등록)
 export const KAKAO_KEY = "de3c45d83caca2bbab2ec89f8fc967f2"
@@ -12,7 +12,7 @@ export const DEFAULT_PROF = {
   hair: "bald", hcolor: "gray", glasses: "half", hat: "none", outfit: "tweed", neck: "auto", pocket: "pens", hand: "laser", desk: "thinkpad",
 }
 // 교수님 부르는 이름: "인문대 박OO 교수"
-const CSHORT = { eng: "공대", hum: "인문대", soc: "사회대", sci: "자연대", art: "예대" }
+const CSHORT = { eng: "공대", hum: "인문대", soc: "사회대", sci: "자연대", art: "예대", nur: "간호대", med: "의대" }
 export const profTitle = (p) => `${CSHORT[p.college] || "공대"} ${p.name} 교수`
 export const DEFAULT_STU = {
   college: "", gender: "m", skin: "dry", eyeshape: "normal", eyes: "tired", dark: 3, red: "no", mouth: "none", hair: "greasy", hstate: "none",
@@ -58,9 +58,11 @@ export const PRESETS = [
   { name: "박OO", college: "soc", age: "young", eyes: "sharp", lines: ["이 정도는 다들 하는데?", "제출 기한은 어제였네", "질문은 수업 끝나고"], glasses: "tint", hair: "pomade", hcolor: "black", outfit: "suit", neck: "nametag", hand: "mic", desk: "ipad", body: "big" },
   { name: "최OO", college: "art", lines: ["이게 최선인가?", "다시 생각해 오게", "크리틱 시작하지"], gender: "f", age: "young", eyes: "sharp", glasses: "horn", hair: "bob", hcolor: "black", outfit: "turtle", neck: "scarf", hand: "espresso", hat: "beret", face: "stone" },
   { name: "이OO", college: "hum", age: "senior", eyes: "droopy", lines: ["자네, 원문은 읽었나?", "그 해석은 틀렸네", "레포트는 30장이네"], glasses: "chain", hair: "side", outfit: "cardigan", hand: "chalk", desk: "thermos", face: "kind", beard: "full", body: "thin" },
-  { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },
+  { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },,
+  { name: "윤OO", college: "nur", lines: ["활력징후 다시 재 와요", "인계는 5분 안에", "케이스 스터디 50장"], gender: "f", age: "middle", eyes: "sharp", glasses: "metal", hair: "updo", hcolor: "black", outfit: "cardigan", neck: "nametag", hand: "pad", desk: "thermos", face: "stone" },
+  { name: "강OO", college: "med", lines: ["그건 국시에 안 나오나?", "이건 그냥 외우게", "다음 주 땡시험이네"], age: "senior", eyes: "narrow", glasses: "chain", hair: "side", hcolor: "salt", outfit: "labcoat", neck: "bluetie", hand: "stick", desk: "books", face: "smirk" }
 ]
-export const ROSTER_MAX = 6
+export const ROSTER_MAX = 8
 export function sanitizeRoster(list) {
   const arr = Array.isArray(list) ? list.slice(0, ROSTER_MAX).filter((p) => p && typeof p === "object").map(sanitizeProf) : []
   return arr.length ? arr : PRESETS.map((p) => sanitizeProf(p))

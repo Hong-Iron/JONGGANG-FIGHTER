@@ -18,6 +18,12 @@ export const WEAPONS = [
   ["ruler", "1m 알루미늄 자", "art", { dmg: 2.2, crit: 0.12, rate: 0.065, debris: "paint", note: "길고 고르다" }],
   ["stand", "접이식 보면대", "art", { dmg: 2.6, crit: 0.1, rate: 0.08, debris: "note", note: "악보가 쏟아진다" }],
   ["shinai", "죽도", "art", { dmg: 1.9, crit: 0.16, rate: 0.055, debris: "bamboo", note: "빠른 연타" }],
+  ["syringe", "50cc 대형 주사기", "nur", { dmg: 1.5, crit: 0.18, rate: 0.055, debris: "drop", note: "빠르게 콕콕" }],
+  ["ivpole", "링거 거치대", "nur", { dmg: 3, crit: 0.1, rate: 0.09, debris: "pill", note: "길고 묵직하다" }],
+  ["clipboard", "인계장 클립보드", "nur", { dmg: 2.2, crit: 0.14, rate: 0.07, debris: "page", fx: "order", note: "치명타 때 교수님 공격이 늦어진다" }],
+  ["scalpel", "메스", "med", { dmg: 1.4, crit: 0.26, rate: 0.05, debris: "spark", note: "치명타가 아주 잦다" }],
+  ["stetho", "청진기 채찍", "med", { dmg: 1.9, crit: 0.15, rate: 0.06, debris: "chip", note: "휘두르면 채찍처럼" }],
+  ["anatomy", "2kg 해부학 아틀라스", "med", { dmg: 3.4, crit: 0.08, rate: 0.1, debris: "page", critMul: 3.5, note: "양손 둔기, 치명타가 아프다" }],
 ]
 export const WEAPON = Object.fromEntries(WEAPONS.map(([c, n, col, s]) => [c, { code: c, name: n, college: col, ...s }]))
 
@@ -25,7 +31,7 @@ export const WEAPON = Object.fromEntries(WEAPONS.map(([c, n, col, s]) => [c, { c
 const S = (o) => o
 export const PART_GROUPS = [
   ["몸과 얼굴", [
-    ["college", "단과대", [["eng", "공대"], ["hum", "인문대"], ["soc", "사회대"], ["sci", "자연대"], ["art", "예대"], ["none", "안 밝힘"]]],
+    ["college", "단과대", [["eng", "공대"], ["hum", "인문대"], ["soc", "사회대"], ["sci", "자연대"], ["art", "예대"], ["nur", "간호대"], ["med", "의대"], ["none", "안 밝힘"]]],
     ["gender", "성별", [["m", "남학생"], ["f", "여학생"]]],
     ["skin", "피부", [["dry", "카페인 푸석"], ["pale", "지박령 창백"], ["flush", "숙취 홍조"], ["tan", "실습 탄 피부"]]],
     ["eyeshape", "눈매", [["normal", "보통"], ["sharp", "날카로운 눈매"], ["droopy", "처진 눈매"], ["big", "큰 눈"]]],
@@ -87,7 +93,7 @@ export function statsOf(stu) {
 // [키, 이름, 선택지]. 그림은 art/game.px.js의 drawProf가 같은 코드로 그린다.
 export const PROF_GROUPS = [
   ["기본", [
-    ["college", "단과대", [["eng", "공대: 모니터 기계팔"], ["hum", "인문대: 철학자 환영"], ["soc", "사회대: 속보 자막"], ["sci", "자연대: 자기장 폭주"], ["art", "예대: 추상화 그림자"]]],
+    ["college", "단과대", [["eng", "공대: 모니터 기계팔"], ["hum", "인문대: 철학자 환영"], ["soc", "사회대: 속보 자막"], ["sci", "자연대: 자기장 폭주"], ["art", "예대: 추상화 그림자"], ["nur", "간호대: 링거 폭주"], ["med", "의대: 수술 로봇 팔"]]],
     ["level", "난이도", [["easy", "순한맛"], ["normal", "보통맛"], ["hard", "매운맛"]]],
     ["grad", "랩장", [["shield", "방어형 박사 6년차"], ["attack", "공격형 석사 1기 (감점)"], ["heal", "힐러형 행정조교 (회복)"]]],
   ]],

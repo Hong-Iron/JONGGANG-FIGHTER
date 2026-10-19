@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// 간호대·의대 그림 점검: 무기 6종(대기·내려치기), 등판 마크, 교탁 마크, 2페이즈 변신, 스킬 아이콘
+import { loadArtSource, buildArt } from "./js/art.js"
+import { DEFAULT_STU, DEFAULT_PROF } from "./js/config.js"
+await loadArtSource()
+const rows = [], add = (l, imgs) => rows.push([l, imgs])
+const crop = (img, x, y, w, h, bg = "#a89e8a") => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = bg; g.fillRect(0, 0, w, h); g.drawImage(img, x, y, w, h, 0, 0, w, h); return c }
+const b = (prof, stu, names) => buildArt({ prof: { ...DEFAULT_PROF, ...prof }, stu: { ...DEFAULT_STU, ...stu } }, names)
+for (const w of ["syringe", "ivpole", "clipboard", "scalpel", "stetho", "anatomy"]) { const a = b({}, { weapon: w }, ["stu_idle", "stu_smash", "stu_overDown"]); add(w, [crop(a.stu_idle, 20, 130, 110, 106), crop(a.stu_smash, 20, 130, 140, 106), crop(a.stu_overDown, 0, 140, 110, 96)]) }
+add("back", ["nur", "med"].map((col) => crop(b({}, { college: col, print: "college" }, ["stu_idle"]).stu_idle, 10, 186, 90, 50)).concat(["nur", "med"].map((col) => crop(b({}, { college: col, print: "crest" }, ["stu_idle"]).stu_idle, 10, 186, 90, 50))))
+const scene = (col) => { const a = b({ college: col }, {}, ["room", "prof_p2", "prof_arms", "lectern"]); const c = document.createElement("canvas"); c.width = 180; c.height = 236; const g = c.getContext("2d"); g.drawImage(a.room, 0, 0); g.drawImage(a.prof_arms, -1, -1); g.drawImage(a.prof_p2, -1, -1); g.drawImage(a.lectern, -1, -1); return c }
+add("p2", [scene("nur"), scene("med")])
+const ic = b({}, {}, ["ic_bandage", "ic_nightshift", "ic_codeblue", "ic_anesthesia", "ic_rounds", "ic_surgery"])
+add("icons", Object.values(ic).map((i) => crop(i, 0, 0, 28, 28)))
+const W = 1400, out = document.createElement("canvas"), sc = 2
+let H = 0; for (const [, imgs] of rows) H += Math.max(...imgs.map((i) => i.height)) * sc + 16
+out.width = W; out.height = H; const g = out.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#222"; g.fillRect(0, 0, W, H); g.font = "12px sans-serif"
+let y = 0
+for (const [label, imgs] of rows) { let x = 80; g.fillStyle = "#fff"; g.fillText(label, 4, y + 14); const rh = Math.max(...imgs.map((i) => i.height)) * sc; for (const im of imgs) { g.drawImage(im, x, y, im.width * sc, im.height * sc); x += im.width * sc + 4 } y += rh + 16 }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ sheet: out.toDataURL() }) })
+</script>

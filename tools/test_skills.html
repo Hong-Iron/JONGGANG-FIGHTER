@@ -19,7 +19,7 @@ const step = (b, s) => { for (let i = 0; i < Math.round(s / 0.01); i++) b.update
 const fresh = (b) => { for (const k in b.cd) b.cd[k] = 0; b.caff = 100; b.attack = null; b.nextAttack = 99 }
 const shot = (w, b, name) => { const cv = w.document.getElementById("game"); b.render(cv.getContext("2d")); shots[name] = cv.toDataURL() }
 try {
-  for (const col of (new URLSearchParams(location.search).get("c") || "eng,hum,soc,sci,art").split(",")) {
+  for (const col of (new URLSearchParams(location.search).get("c") || "eng,hum,soc,sci,art,nur,med").split(",")) {
     const [w, b] = await boot(col)
     const names = b.SK.map((k) => k.name).join(",")
     const r = [col + ": " + names]
@@ -32,13 +32,16 @@ try {
     step(b, 4); b.bind = 0; b.burn = 0
     // 2칸
     fresh(b); hp = b.hp; b.skill(1); step(b, 0.05)
-    r.push("s2 haste=" + b.haste.toFixed(1) + " critB=" + b.critB.toFixed(1) + " shield=" + b.shield + " freeze=" + b.freezeP.toFixed(1) + " beat=" + b.beatT.toFixed(1))
+    r.push("s2 haste=" + b.haste.toFixed(1) + " critB=" + b.critB.toFixed(1) + " shield=" + b.shield + " freeze=" + b.freezeP.toFixed(1) + " beat=" + b.beatT.toFixed(1) + " guard=" + b.guardT.toFixed(1) + " rounds=" + b.roundsT.toFixed(1))
     if (col === "soc") { const p0 = b.stats.parries, s0 = b.sleep; b.startAttack(); b.attack.hitAt = 0.02; step(b, 0.15); r.push("factcheck auto-parry +" + (b.stats.parries - p0) + " sleep " + s0 + "->" + b.sleep.toFixed(0)) }
     if (col === "sci") { b.nextAttack = 0.01; step(b, 0.3); r.push("frozen: attack started? " + !!b.attack); const h1 = b.hp; b.lastTap = -9; b.tap(); r.push("frozen tap dmg " + (h1 - b.hp).toFixed(1)); shot(w, b, "sci_s2") }
     if (col === "art") { let on = 0; for (let k = 0; k < 10; k++) { b.t = b.beat0 + 0.42 * (k + 1) + 0.01; b.lastTap = -9; const c0 = b.stats.crits; b.tap(); if (b.stats.crits > c0) on++ } r.push("on-beat crits " + on + "/10"); shot(w, b, "art_s2") }
+    if (col === "nur") { b.sleep = 50; b.guardT = 0; b.cd.nightshift = 0; b.caff = 100; b.skill(1); const s0 = b.sleep; b.startAttack(); b.attack.hitAt = 0.02; step(b, 0.15); r.push("nightshift sleep 50->" + s0 + ", hit took " + (s0 - b.sleep).toFixed(1)); b.attack = null }
+    if (col === "med") { let best = 0; for (let k = 0; k < 40; k++) { b.lastTap = -9; const h1 = b.hp, c0 = b.stats.crits; b.tap(); if (b.stats.crits > c0) best = Math.max(best, h1 - b.hp) } r.push("rounds crit dmg " + best.toFixed(1)); b.hp = b.hpMax * 0.9 }
+    if (col === "nur" || col === "med") { fresh(b); b.bind = 0; b.cd[b.SK[0].id] = 0; b.skill(0); let best = 0; for (let k = 0; k < 20; k++) { b.lastTap = -9; const h1 = b.hp; b.tap(); best = Math.max(best, h1 - b.hp) } r.push("during s1 bind=" + b.bind.toFixed(1) + "/" + b.bindKind + " max tap " + best.toFixed(1)); shot(w, b, col + "_s1"); b.bind = 0 }
     // 3칸 (궁극기)
     fresh(b); b.grad = null; hp = b.hp; b.skill(2)
-    step(b, 0.3); shot(w, b, col + "_ult"); step(b, 1.2)
+    step(b, 0.6); shot(w, b, col + "_ult"); step(b, 1.2)
     r.push("ult dmg " + (hp - b.hp).toFixed(0) + " cine " + (b.cine ? b.cine.kind : "none") + (col === "soc" ? " stun=" + b.bind.toFixed(1) + "/" + b.bindKind : ""))
     log.push(r.join(" | "))
   }

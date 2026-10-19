@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190828"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190828"
-import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190828"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190828"
-import { makeCard } from "./card.js?v=202610190828"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190828"
-import { lbWin, lbBoard } from "./lb.js?v=202610190828"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190828"
+import { loadArtSource, buildArt } from "./art.js?v=202610190921"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190921"
+import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190921"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190921"
+import { makeCard } from "./card.js?v=202610190921"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190921"
+import { lbWin, lbBoard } from "./lb.js?v=202610190921"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190921"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -221,10 +221,10 @@ function renderRoster() {
     del.onclick = () => { if (roster.length <= 1) return toast("교수님이 한 명은 있어야 해요"); roster.splice(i, 1); saveRoster(); renderRoster() }
     row.append(face, nm, ed, del); list.append(row)
   })
-  $("#b-add").textContent = roster.length >= ROSTER_MAX ? "최대 6명" : "교수님 추가"
+  $("#b-add").textContent = roster.length >= ROSTER_MAX ? `최대 ${ROSTER_MAX}명` : "교수님 추가"
 }
 $("#b-add").onclick = () => {
-  if (roster.length >= ROSTER_MAX) return toast("교수님은 6명까지예요")
+  if (roster.length >= ROSTER_MAX) return toast(`교수님은 ${ROSTER_MAX}명까지예요`)
   const base = PRESETS[roster.length % PRESETS.length]
   roster.push(sanitizeProf({ ...base, name: ["이OO", "정OO", "강OO", "윤OO", "한OO", "조OO"][roster.length % 6] }))
   saveRoster(); editProf(roster.length - 1)
