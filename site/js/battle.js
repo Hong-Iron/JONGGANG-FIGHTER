@@ -1,9 +1,9 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190921"
-import { sfx } from "./sfx.js?v=202610190921"
-import { WEAPON, statsOf } from "./parts.js?v=202610190921"
-import { profTitle } from "./config.js?v=202610190921"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610190941"
+import { sfx } from "./sfx.js?v=202610190941"
+import { WEAPON, statsOf } from "./parts.js?v=202610190941"
+import { profTitle } from "./config.js?v=202610190941"
 
 export const W = 180, H = 320
 
@@ -45,7 +45,23 @@ function scaled(b, s) {
 }
 let vibrate = true
 export function setVibrate(v) { vibrate = v }
-function buzz(p) { if (vibrate && navigator.vibrate) try { navigator.vibrate(p) } catch {} }
+// 진동: 안드로이드는 Vibration API. 아이폰 Safari(iOS 18+)는 이 API가 없어서, 숨긴 스위치 체크박스를 눌러 생기는 햅틱을 쓴다.
+// 아이폰 햅틱은 화면을 누른 그 순간에만 나므로, 터치 없이 맞을 때는 진동이 없다
+let hapticEl = null
+function iosTap() {
+  try {
+    if (!hapticEl) {
+      hapticEl = document.createElement("label"); hapticEl.ariaHidden = "true"; hapticEl.style.display = "none"
+      const sw = document.createElement("input"); sw.type = "checkbox"; sw.setAttribute("switch", ""); hapticEl.append(sw); document.body.append(hapticEl)
+    }
+    hapticEl.click()
+  } catch {}
+}
+function buzz(p) {
+  if (!vibrate) return
+  if (navigator.vibrate) { try { navigator.vibrate(p) } catch {} ; return }
+  iosTap()
+}
 
 // 학생 공격 동작: [자세, 길이(초), 맞는 순간]. 빠르게 연타하면 휘두르기 준비 자세를 건너뛴다
 const MOVES = {
@@ -171,7 +187,7 @@ export class Battle {
     if (onBeat) this.say("박자!", 140, 182, C.o, { font: "s9", outline: C.K })
     if (this.freezeP > 0) mult *= 1.5
     const dmg = W.dmg * (crit ? (W.critMul || 3) * (this.roundsT > 0 ? 2 : 1) : 1) * mult * this.ST.fx.dmgMul * (this.bind > 0 && this.bindKind === "bandage" ? 1.3 : 1)
-    sfx("key")
+    sfx("key"); if (crit) buzz(18)
     // 동작 고르기: 콤보 6부터 두 손 내려찍기, 그 전에는 내려치기와 옆으로 휘두르기를 번갈아
     const kind = this.combo >= 6 ? "over" : this.stats.taps % 2 ? "smash" : "sweep"
     const busy = this.anim && this.anim.i < this.anim.frames.length
@@ -229,7 +245,7 @@ export class Battle {
     this.parryPress = this.t
     a.done = true; a.parried = true
     this.stats.parries++; if (perfect) this.stats.perfect++
-    sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15); buzz(perfect ? [15, 30, 15] : 20)
+    sfx("parry"); this.hitstop(0.09); this.shake(perfect ? 3 : 2, 0.15); buzz(perfect ? [35, 40, 35] : 35)
     this.caff = Math.min(100, this.caff + (perfect ? 18 : 10))
     this.shatter(a)
     if (a.kind === "chalk") this.fx.push({ type: "chalkback", t: 0, life: 0.25 })
@@ -245,7 +261,7 @@ export class Battle {
     const pen = this.L.whiff
     this.parryLock = 0.4; this.stats.whiffs++
     this.sleep = Math.max(0, this.sleep - pen); this.stats.taken += pen
-    this.hurtT = 0.2; this.shake(1, 0.08); this.flash = { t: 0.08, color: C.Q }; sfx("early"); buzz(40)
+    this.hurtT = 0.2; this.shake(1, 0.08); this.flash = { t: 0.08, color: C.Q }; sfx("early"); buzz(60)
     this.say(`${msg} -${pen} 수면량`, 52, 176, C.X, { font: "b11", outline: C.r, outline2: C.K })
     if (this.sleep <= 0) this.finish("lose")
   }
@@ -253,7 +269,7 @@ export class Battle {
   skill(i) {
     const s = this.SK[i]
     if (!s || this.cine || this.cd[s.id] > 0 || this.caff < s.cost) { sfx("early"); return }
-    this.caff -= s.cost; this.cd[s.id] = s.cd; this.stats.skills++
+    this.caff -= s.cost; this.cd[s.id] = s.cd; this.stats.skills++; buzz(s.cost >= 100 ? [60, 30, 120] : 40)
     const stopAttack = () => { if (this.attack && !this.attack.done) { this.attack.done = true; this.endAttack() } }
     const shout = (t, col, y = 150) => this.say(t, 90, y, col, { font: "b11", outline: C.K })
     switch (s.id) {
@@ -382,7 +398,7 @@ export class Battle {
       a.done = true
       const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental) * (this.guardT > 0 ? 0.5 : 1)
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
-      this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz(70)
+      this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz([90, 40, 60])
       this.combo = 0
       this.say("-" + Math.round(dmg) + " 수면량", 40, 168, C.X, { font: "b11", outline: C.U, outline2: C.K, rise: 1 })
       this.fx.push({ type: "hurtfx", college: this.stu.college, t: 0, life: 0.5 })   // 단과대마다 다른 피격 연출

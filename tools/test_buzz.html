@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 진동: 안드로이드 경로(navigator.vibrate)와 아이폰 경로(숨긴 스위치 클릭)가 언제 불리는지 센다
+const log = [], f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot(ios) {
+  for (let t = 0; t < 4; t++) {
+    f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow
+    for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+  }
+  throw new Error("boot failed")
+}
+async function run(ios) {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "nur" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  const w = await boot(), calls = []
+  if (ios) Object.defineProperty(w.Navigator.prototype, "vibrate", { value: undefined, configurable: true })
+  else w.navigator.vibrate = (p) => { calls.push(JSON.stringify(p)); return true }
+  let clicks = 0, leaked = 0
+  w.document.addEventListener("click", (e) => { if (e.target.tagName === "LABEL") clicks++; else if (e.target.tagName === "INPUT") {} }, true)
+  const scr0 = w.__jg.screen
+  w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+  const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99
+  b.W = { ...b.W, crit: 1 }; for (let i = 0; i < 3; i++) { b.lastTap = -9; b.tap() }      // 치명타 3번
+  b.caff = 100; b.skill(0)                                                               // 스킬
+  b.bind = 0; b.cine = null; b.startAttack(); b.attack.hitAt = 0.02; for (let i = 0; i < 10; i++) b.update(0.02)   // 맞기
+  log.push((ios ? "ios" : "android") + ": vibrate " + calls.join(" ") + " | label clicks " + clicks + " | screen still " + w.__jg.screen + " | switch el " + !!w.document.querySelector('input[switch]'))
+}
+try { await run(false); await run(true) } catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>
