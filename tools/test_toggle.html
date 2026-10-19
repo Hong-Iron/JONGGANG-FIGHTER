@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script type="module">
+// 소리와 진동을 따로 켜고 끄는지, 다시 열어도 기억하는지, 일시정지 화면 버튼도 같이 바뀌는지
+const log = [], f = document.getElementById("f"), wait = (ms) => new Promise((r) => setTimeout(r, ms))
+async function boot() {
+  for (let t = 0; t < 4; t++) {
+    f.src = "index.html?x=" + Math.random(); await new Promise((r) => (f.onload = r))
+    const w = f.contentWindow; for (let i = 0; i < 200 && !(w.__jg && w.__jg.art); i++) await wait(50)
+    if (w.__jg && w.__jg.art) return w
+  }
+  throw new Error("boot failed")
+}
+async function hits(w) {                                                  // 반박 한 번 + 맞기 한 번에 진동이 몇 번 울리나
+  const calls = []; w.navigator.vibrate = (p) => (calls.push(p), true)
+  w.__jg.startRun(); for (let i = 0; i < 100 && !w.__jg.battle; i++) await wait(50)
+  const b = w.__jg.battle; b.intro = 0; b.nextAttack = 99; b.startAttack(); b.attack.hitAt = 0.02; for (let i = 0; i < 10; i++) b.update(0.02)
+  return calls.length
+}
+try {
+  localStorage.clear(); localStorage.setItem("jg-seen-help", "true"); localStorage.setItem("jg-stu", JSON.stringify({ college: "eng" })); localStorage.setItem("jg-lb-url", "http://127.0.0.1:8767")
+  let w = await boot(), d = f.contentDocument
+  const txt = () => ["b-sound", "b-vib", "b-sound2", "b-vib2"].map((id) => d.getElementById(id).textContent).join(" / ")
+  log.push("start: " + txt())
+  d.getElementById("b-sound").click(); log.push("sound off: " + txt())
+  log.push("buzz with sound off: " + await hits(w))
+  w = await boot(); d = f.contentDocument
+  const calls = []; w.navigator.vibrate = (p) => (calls.push(p), true)
+  d.getElementById("b-vib").click(); log.push("vib off: " + txt() + " | buzz on toggle " + calls.length)
+  log.push("buzz with vib off: " + await hits(w))
+  w = await boot(); d = f.contentDocument
+  log.push("after reload: " + txt() + " | stored " + localStorage.getItem("jg-vib") + "," + localStorage.getItem("jg-mute"))
+  const c2 = []; w.navigator.vibrate = (p) => (c2.push(p), true)
+  d.getElementById("b-vib2").click(); log.push("pause button vib on: " + txt() + " | buzz on toggle " + c2.length)
+} catch (e) { log.push("ERR " + e.stack) }
+await fetch("http://127.0.0.1:8766/r", { method: "POST", body: JSON.stringify({ log }) })
+</script>

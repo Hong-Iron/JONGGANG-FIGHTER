@@ -1,12 +1,12 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610190941"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610190941"
-import { Battle, W, H, drawCeiling, setVibrate, skillSet } from "./battle.js?v=202610190941"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190941"
-import { makeCard } from "./card.js?v=202610190941"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190941"
-import { lbWin, lbBoard } from "./lb.js?v=202610190941"
-import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190941"
+import { loadArtSource, buildArt } from "./art.js?v=202610190949"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610190949"
+import { Battle, W, H, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610190949"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610190949"
+import { makeCard } from "./card.js?v=202610190949"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610190949"
+import { lbWin, lbBoard } from "./lb.js?v=202610190949"
+import { COLLEGES, KAKAO_KEY, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610190949"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -394,9 +394,19 @@ $("#b-stu").onclick = () => show("stu")
 $("#b-help").onclick = () => show("help")
 $("#b-link").onclick = () => copyLink(roster, record.best)
 $("#b-link2").onclick = () => copyLink(run ? run.list : roster, lastRes?.run?.streak || 0)
-const bs = $("#b-sound"); const syncSound = () => (bs.textContent = isMuted() ? "소리·진동 끔" : "소리·진동 켬"); syncSound()
-setVibrate(!isMuted())
-bs.onclick = () => { unlock(); setMuted(!isMuted()); setVibrate(!isMuted()); syncSound() }
+// 소리와 진동은 따로 켜고 끈다. 진동 설정은 jg-vib ("0"이면 끔)
+let vibOn = true
+try { vibOn = localStorage.getItem("jg-vib") !== "0" } catch {}
+setVibrate(vibOn)
+const syncSound = () => {
+  for (const id of ["#b-sound", "#b-sound2"]) $(id).textContent = isMuted() ? "소리 끔" : "소리 켬"
+  for (const id of ["#b-vib", "#b-vib2"]) $(id).textContent = vibOn ? "진동 켬" : "진동 끔"
+}
+syncSound()
+const toggleSound = () => { unlock(); setMuted(!isMuted()); syncSound() }
+const toggleVib = () => { vibOn = !vibOn; try { localStorage.setItem("jg-vib", vibOn ? "1" : "0") } catch {} ; setVibrate(vibOn); if (vibOn) buzzOnce(); syncSound() }
+for (const id of ["#b-sound", "#b-sound2"]) $(id).onclick = toggleSound
+for (const id of ["#b-vib", "#b-vib2"]) $(id).onclick = toggleVib
 
 function cardBlob() { return new Promise((r) => lastRes.cardCanvas.toBlob(r, "image/png")) }
 $("#b-save").onclick = async () => {
