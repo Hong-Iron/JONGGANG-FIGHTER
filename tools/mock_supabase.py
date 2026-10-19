@@ -2,7 +2,7 @@
 python3 tools/mock_supabase.py  (127.0.0.1:8767). 게임에서 localStorage jg-lb-url=http://127.0.0.1:8767 로 바꿔 쓴다.
 GET /calls 로 받은 요청 목록을 본다."""
 import http.server, json
-COLLEGES = [("eng", "공과대학", 1), ("hum", "인문대학", 2), ("soc", "사회과학대학", 3), ("sci", "자연과학대학", 4), ("art", "예술대학", 5), ("nur", "간호대학", 6), ("med", "의과대학", 7)]
+COLLEGES = [("eng", "공과대학", 1), ("hum", "인문대학", 2), ("soc", "사회과학대학", 3), ("sci", "자연과학대학", 4), ("art", "예술대학", 5), ("nur", "간호대학", 6), ("med", "의과대학", 7), ("law", "법과대학", 8), ("edu", "사범대학", 9)]
 DATA = {c: {"wins": 0, "best": 0, "runs": 0} for c, _, _ in COLLEGES}
 DATA["hum"] = {"wins": 7, "best": 4, "runs": 3}   # 다른 단과대도 있어 보이게
 CALLS = []

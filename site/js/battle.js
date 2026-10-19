@@ -1,10 +1,10 @@
 // 전투: 연타로 과제를 제출해 교수님 체력을 깎고, 말풍선 공격은 타이밍 맞춰 [반박]으로 쳐낸다.
 // 화면은 세로 180×320 논리 픽셀. 모든 그림은 정수 좌표에 찍는다.
-import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610191216"
-import { sfx } from "./sfx.js?v=202610191216"
-import { WEAPON, statsOf } from "./parts.js?v=202610191216"
-import { profTitle } from "./config.js?v=202610191216"
-import { upStats } from "./upgrades.js?v=202610191216"
+import { drawText, drawFit, textImage, wrap, width } from "./text.js?v=202610200036"
+import { sfx } from "./sfx.js?v=202610200036"
+import { WEAPON, statsOf } from "./parts.js?v=202610200036"
+import { profTitle } from "./config.js?v=202610200036"
+import { upStats } from "./upgrades.js?v=202610200036"
 
 export const W = 180, H = 320
 export const RUN_TIME = 270                                           // 도전 전체 제한 시간 4분 30초 (교수님마다 따로가 아니라 이어서 줄어든다)
@@ -98,6 +98,8 @@ export const SKILLSETS = {
   sci: [["lamp", "알코올 램프", 35, 11, "ic_lamp", "4초 동안 강한 화상"], ["nitrogen", "액체질소", 0, 18, "ic_nitrogen", "2.5초 얼림, 그동안 데미지 1.5배"], ["centrifuge", "원심분리기 폭주", 100, 4, "ic_centrifuge", "14연속 타격"]],
   nur: [["bandage", "압박붕대", 30, 11, "ic_bandage", "3.5초 묶기, 그동안 데미지 1.3배"], ["nightshift", "나이트 근무", 0, 20, "ic_nightshift", "수면량 +25, 6초 받는 피해 절반"], ["codeblue", "코드 블루", 100, 4, "ic_codeblue", "가슴 압박 15연타"]],
   med: [["anesthesia", "마취 주사", 35, 12, "ic_anesthesia", "4초 동안 교수님이 잠듦"], ["rounds", "교수 회진", 0, 18, "ic_rounds", "6초 동안 치명타 피해 2배"], ["surgery", "응급 수술", 100, 4, "ic_surgery", "절개 다섯 번 (130)"]],
+  law: [["objection", "이의 있음!", 30, 11, "ic_objection", "3.5초 동안 교수님이 공격 못 함"], ["counsel", "변호인 선임", 0, 20, "ic_counsel", "5초 동안 받는 피해 0"], ["verdict", "판결 선고", 100, 4, "ic_verdict", "망치 세 번 (135)"]],
+  edu: [["rollcall", "출석 부르기", 30, 12, "ic_rollcall", "4초 동안 교수님이 출석부만 봄"], ["sticker", "칭찬 스티커", 0, 18, "ic_sticker", "다음 10번 타격이 모두 치명타"], ["chalkstorm", "분필 폭풍", 100, 4, "ic_chalkstorm", "분필 18연발"]],
   art: [["spray", "락카 스프레이", 30, 12, "ic_spray", "5초 동안 공격이 절반은 빗나감"], ["metronome", "메트로놈", 0, 18, "ic_metronome", "6초 동안 박자 맞춰 누르면 치명타"], ["canvas", "100호 캔버스", 100, 4, "ic_canvas", "캔버스 내려찍기 (140)"]],
 }
 export function skillSet(college) {
@@ -133,7 +135,7 @@ export class Battle {
     this.parryLock = 0; this.parryPress = -9
     this.bind = 0; this.bindTick = 0; this.haste = 0; this.spec = 0
     this.SK = skillSet(stu.college); this.cd = Object.fromEntries(this.SK.map((k) => [k.id, 0]))
-    this.bindKind = "wire"; this.critB = 0; this.shield = false; this.slowT = 0; this.freezeP = 0; this.blindT = 0; this.beatT = 0; this.beat0 = 0; this.burnDmg = 1.5; this.guardT = 0; this.roundsT = 0
+    this.bindKind = "wire"; this.critB = 0; this.shield = false; this.slowT = 0; this.freezeP = 0; this.blindT = 0; this.beatT = 0; this.beat0 = 0; this.burnDmg = 1.5; this.guardT = 0; this.roundsT = 0; this.immuneT = 0; this.critCharges = 0
     this.grad = null; this.summons = 0
     this.fx = []; this.notes = []
     this.shakeT = 0; this.shakeMag = 0; this.flash = null
@@ -195,7 +197,8 @@ export class Battle {
     if (this.spec > 0) mult *= pick([0, 0.5, 1, 2, 3])
     const W = this.W
     const onBeat = this.beatT > 0 && (() => { const ph = ((this.t - this.beat0) % BEAT + BEAT) % BEAT; return ph < 0.09 || ph > BEAT - 0.09 })()
-    const crit = onBeat || Math.random() < W.crit + 0.01 * this.ST.luck + (this.critB > 0 ? 0.3 : 0) + this.UP.critAdd
+    const sticker = this.critCharges > 0; if (sticker) this.critCharges--      // 칭찬 스티커: 남은 횟수만큼 무조건 치명타
+    const crit = sticker || onBeat || Math.random() < W.crit + 0.01 * this.ST.luck + (this.critB > 0 ? 0.3 : 0) + this.UP.critAdd
     if (onBeat) this.say("박자!", 140, 182, C.o, { font: "s9", outline: C.K })
     if (this.freezeP > 0) mult *= 1.5
     const dmg = W.dmg * (crit ? (W.critMul || 3) * (this.roundsT > 0 ? 2 : 1) * this.UP.critMul : 1) * mult * this.ST.fx.dmgMul * this.UP.dmgMul * (this.bind > 0 && this.bindKind === "bandage" ? 1.3 : 1)
@@ -314,6 +317,10 @@ export class Battle {
       case "anesthesia": sfx("skill"); this.bind = 4; this.bindTick = 0; this.bindKind = "sleep"; stopAttack(); return shout("마취 들어갑니다", "#7fe6ff")
       case "nightshift": sfx("gulp"); this.sleep = Math.min(100, this.sleep + 25); this.guardT = 6; return shout("나이트 근무 버티기", "#9b8cff")
       case "rounds": sfx("skill"); this.roundsT = 6; return shout("교수 회진 따라붙기!", C.X)
+      case "objection": sfx("stamp"); this.bind = 3.5; this.bindTick = 0; this.bindKind = "objection"; stopAttack(); this.shake(3, 0.15); return shout("이의 있음!", C.U)
+      case "rollcall": sfx("skill"); this.bind = 4; this.bindTick = 0; this.bindKind = "rollcall"; stopAttack(); return shout("출석 부르겠습니다", C.X)
+      case "counsel": sfx("skill"); this.immuneT = 5; return shout("변호인 선임 완료", "#ffe48a")
+      case "sticker": sfx("skill"); this.critCharges = 10; return shout("참 잘했어요!", "#ffe48a")
       case "metronome": sfx("skill"); this.beatT = 6; this.beat0 = this.t; return shout("박자 맞춰서!", C.o)
       default: sfx("push"); this.cine = { kind: "ult", id: s.id, t: 0, n: 0 }; this.stopForUlt = stopAttack(); return
     }
@@ -354,6 +361,7 @@ export class Battle {
     this.parryLock = Math.max(0, this.parryLock - dt)
     this.hurtT = Math.max(0, this.hurtT - dt); this.profHitT = Math.max(0, this.profHitT - dt); this.profKnock = Math.max(0, (this.profKnock || 0) - dt)
     this.haste = Math.max(0, this.haste - dt); this.spec = Math.max(0, this.spec - dt)
+    this.immuneT = Math.max(0, this.immuneT - dt)
     this.guardT = Math.max(0, this.guardT - dt); this.roundsT = Math.max(0, this.roundsT - dt)
     this.critB = Math.max(0, this.critB - dt); this.slowT = Math.max(0, this.slowT - dt); this.freezeP = Math.max(0, this.freezeP - dt)
     this.blindT = Math.max(0, this.blindT - dt); this.beatT = Math.max(0, this.beatT - dt)
@@ -417,7 +425,7 @@ export class Battle {
     }
     if (!a.done && a.e >= a.hitAt + 0.05) {                           // 맞았다
       a.done = true
-      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental) * (this.guardT > 0 ? 0.5 : 1) * this.UP.takenMul
+      const dmg = this.L.dmg[this.phase === 2 ? 1 : 0] * (a.kind === "barrage" ? 0.6 : a.kind === "chalk" ? 0.5 : 1) * Math.max(0.55, 1 - 0.05 * this.ST.mental) * (this.guardT > 0 ? 0.5 : 1) * this.UP.takenMul * (this.immuneT > 0 ? 0 : 1)
       this.sleep = Math.max(0, this.sleep - dmg); this.stats.taken += dmg
       this.hurtT = 0.45; this.shake(4, 0.25); this.flash = { t: 0.18, color: C.U }; sfx("hurt"); buzz([90, 40, 60])
       this.combo = 0
@@ -518,6 +526,16 @@ export class Battle {
       const n = Math.min(5, Math.floor(c.t / 0.14))
       while (c.n < n) { c.n++; this.damage(c.n < 5 ? 14 : 0, { x: 100, y: 110, noGrade: true, quiet: true }); this.shake(2, 0.06); sfx("hitProf"); if (this.cine !== c) return }
       if (c.t >= 0.85) return big(74, "응급 수술 완료!", C.X)
+    }
+    if (c.id === "verdict") {                                            // 판사봉 세 번: 땅, 땅, 땅
+      const n = Math.min(3, Math.floor((c.t - 0.1) / 0.25) + 1)
+      while (c.n < n) { c.n++; this.damage(c.n < 3 ? 45 : 0, { x: 100, y: 108, noGrade: true, quiet: true }); this.shake(4 + c.n, 0.12); sfx("stamp"); if (this.cine !== c) return }
+      if (c.t >= 0.75) return big(45, "유죄!", C.U)
+    }
+    if (c.id === "chalkstorm") {                                         // 분필 18연발
+      const n = Math.floor(Math.max(0, c.t - 0.15) / 0.06)
+      while (c.n < Math.min(18, n)) { c.n++; this.damage(7, { x: 100 + rnd(-24, 24), y: 110 + rnd(-20, 20), noGrade: true }); this.fx.push({ type: "bit", d: "chalk", x: rnd(20, 160), y: 236, vx: rnd(-30, 30), vy: -rnd(260, 360), t: 0, life: 0.5, r: 0 }); this.shake(2, 0.04); if (this.cine !== c) return }
+      if (c.n >= 18 && c.t > 1.4) { if (this.grad) this.gradDown(); this.cine = null; this.say("분필 폭풍!", 90, 136, C.X, { font: "l14", bold: true, outline: C.K, outline2: C.N, rise: 0 }) }
     }
     if (c.id === "codeblue") {                                           // 가슴 압박 15연타
       const n = Math.floor(Math.max(0, c.t - 0.2) / 0.075)
@@ -755,6 +773,7 @@ export class Battle {
     else if (d === "rock") { P(C.K, 5, 4, -1, -1); P("#8e94a6", 3, 2); P("#555b6d", 2, 1, 1, 1) }
     else if (d === "paint") { P(["#29b6e8", "#e8296f", "#f2d430", "#1d1622"][Math.floor(r * 4)], 3, 3) }
     else if (d === "note") { P(C.K, 3, 2, 0, 4); P(C.K, 1, 5, 2, 0); P(C.K, 2, 1, 2, 0) }
+    else if (d === "coin") { P("#e8b84a", 3, 3); P("#fff0a8", 1, 1) }
     else if (d === "pill") { P(["#ff3434", "#4f9be0", "#ffe48a"][Math.floor(r * 3)], 3, 2); P(C.X, 1, 2, 2, 0) }
     else if (d === "bamboo") { P("#dcc479", 1, 4); P("#a68d3c", 1, 2, 1, 1) }
     else P(C.X, 2, 2)
@@ -775,6 +794,10 @@ export class Battle {
     else if (col === "nur") {                                          // 모니터가 일자로: 삐—
       x.fillStyle = C.N; this.line(x, 10, 200, 40, 200, 1); this.line(x, 40, 200, 46, 186, 1); this.line(x, 46, 186, 52, 212, 1); this.line(x, 52, 212, 58, 200, 1); x.fillRect(58, 200, Math.round(40 + t * 80), 1)
       if (t < 0.4) drawText(x, "삐—", 40, 170, { font: "b11", color: C.N, outline: C.K })
+    } else if (col === "law") { const img = textImage("패소", { font: "l14", bold: true, stamp: 6, color: "#2f4a9a", outline: C.X }); x.drawImage(img, 46 - (img.width >> 1), 170 + (t < 0.06 ? -4 : 0)) }
+    else if (col === "edu") {                                          // 반성문 한 장
+      x.fillStyle = C.K; x.fillRect(19, 159, 52, 34); x.fillStyle = C.p; x.fillRect(20, 160, 50, 32); x.fillStyle = "#d3dbe9"; for (let i = 0; i < 4; i++) x.fillRect(22, 170 + i * 6, 46, 1)
+      drawText(x, "반성문", 45, 162, { font: "s9", color: C.R, align: "c" })
     } else if (col === "med") { const img = textImage("유급", { font: "l14", bold: true, stamp: -10, color: C.R, outline: C.X }); x.drawImage(img, 46 - (img.width >> 1), 170 + (t < 0.06 ? -4 : 0)) }
     else if (col === "art") { x.fillStyle = C.X; for (let i = 0; i < 14; i++) x.fillRect(20 + (i * 37) % 70, Math.round(190 - t * 40 + (i * 13) % 20), 2, 2); if (t < 0.3) drawText(x, "불협화음", 34, 158, { font: "s9", color: C.X, outline: C.K }) }
   }
@@ -844,6 +867,17 @@ export class Battle {
       for (let k = 0; k < 5; k++) { const y = 70 + k * 16 + oy; x.fillStyle = C.K; x.fillRect(48 + ox, y - 1, 86, 8); x.fillStyle = k % 2 ? "#eef0f4" : C.X; x.fillRect(48 + ox, y, 86, 6); x.fillStyle = "#c9ccd6"; for (let i = 0; i < 86; i += 6) x.fillRect(48 + ox + i, y + 2, 2, 1) }
       return drawText(x, "압박 " + Math.ceil(this.bind) + "초 · 데미지 1.3배", 90, 142, { font: "s7", color: C.X, outline: C.K, align: "c" })
     }
+    if (this.bindKind === "objection") {                              // 손가락질하는 큰 글씨가 교수님을 막는다
+      const img = textImage("이의 있음!", { font: "l14", bold: true, color: C.U, outline: C.X, outline2: C.K })
+      x.drawImage(img, 90 - (img.width >> 1) + ox + (Math.floor(this.t * 20) % 2), 74 + oy)
+      return drawText(x, "이의 " + Math.ceil(this.bind) + "초", 90, 142, { font: "s7", color: C.X, outline: C.K, align: "c" })
+    }
+    if (this.bindKind === "rollcall") {                               // 교수님 앞을 가린 출석부
+      x.fillStyle = C.K; x.fillRect(58 + ox, 76 + oy, 64, 46); x.fillStyle = "#1d6b3f"; x.fillRect(59 + ox, 77 + oy, 62, 44); x.fillStyle = C.p; x.fillRect(64 + ox, 82 + oy, 52, 34)
+      x.fillStyle = C.K; for (let i = 0; i < 5; i++) x.fillRect(68 + ox, 86 + i * 6 + oy, 30, 1)
+      x.fillStyle = C.R; const k = Math.floor((4 - this.bind) * 2); for (let i = 0; i < Math.min(5, k); i++) x.fillRect(104 + ox, 85 + i * 6 + oy, 4, 3)
+      return drawText(x, "출석 " + Math.ceil(this.bind) + "초", 90, 142, { font: "s7", color: C.X, outline: C.K, align: "c" })
+    }
     if (this.bindKind === "sleep") {
       const k = Math.floor(this.t * 3) % 3
       for (let i = 0; i <= k; i++) drawText(x, "Z", 118 + i * 8 + ox, 56 - i * 8 + oy, { font: "b11", color: "#7fe6ff", outline: C.K })
@@ -866,6 +900,8 @@ export class Battle {
     if (this.beatT > 0) tags.push(["박자 " + Math.ceil(this.beatT), C.o])
     if (this.guardT > 0) tags.push(["나이트 " + Math.ceil(this.guardT), "#9b8cff"])
     if (this.roundsT > 0) tags.push(["회진 " + Math.ceil(this.roundsT), C.X])
+    if (this.immuneT > 0) tags.push(["변호 " + Math.ceil(this.immuneT), "#ffe48a"])
+    if (this.critCharges > 0) tags.push(["스티커 " + this.critCharges, "#ffe48a"])
     let y = 150
     for (const [t, col] of tags) { drawText(x, t, 8, y, { font: "s7", color: col, outline: C.K }); y += 10 }
     if (this.beatT > 0) {                                               // 메트로놈 추: 박자에 맞춰 좌우로
@@ -891,6 +927,13 @@ export class Battle {
       x.fillStyle = "#29b6e8"; x.fillRect(44, y + 14, 30, 20); x.fillStyle = "#e8296f"; x.fillRect(84, y + 34, 40, 30); x.fillStyle = C.N; this.line(x, 40, y + 74, 140, y + 10, 2)
       return
     }
+    if (c.id === "verdict") {                                          // 법정: 어두워지고 판사봉이 내려친다
+      this.dim(x, 0.3)
+      const k = Math.min(3, c.n), up = (c.t % 0.25) < 0.12
+      x.fillStyle = C.K; x.fillRect(118, up ? 40 : 56, 34, 14); x.fillStyle = "#a46d45"; x.fillRect(119, up ? 41 : 57, 32, 12); x.fillStyle = "#7b5034"; x.fillRect(132, up ? 54 : 70, 6, 40)
+      return drawText(x, "판결 " + k + "/3", 90, 44, { font: "b11", color: C.X, outline: C.K, align: "c" })
+    }
+    if (c.id === "chalkstorm") return drawText(x, "분필 " + c.n + "/18", 90, 60, { font: "b11", color: C.X, outline: C.N, align: "c" })
     if (c.id === "surgery") {                                          // 수술등 아래로 절개선이 하나씩 그어진다
       this.dim(x, 0.35)
       x.fillStyle = "#fff7d6"; x.fillRect(66, 30, 48, 6); x.fillStyle = C.K; x.fillRect(66, 36, 48, 1)

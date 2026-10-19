@@ -1,13 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610191216"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610191216"
-import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191216"
-import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191216"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191216"
-import { makeCard } from "./card.js?v=202610191216"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191216"
-import { lbWin, lbBoard } from "./lb.js?v=202610191216"
-import { COLLEGES, KAKAO_KEY, gameHome, gradeOf, nextGrade, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191216"
+import { loadArtSource, buildArt } from "./art.js?v=202610200036"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610200036"
+import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610200036"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610200036"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610200036"
+import { makeCard } from "./card.js?v=202610200036"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610200036"
+import { lbWin, lbBoard } from "./lb.js?v=202610200036"
+import { COLLEGES, KAKAO_KEY, gameHome, gradeOf, nextGrade, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610200036"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -226,8 +226,9 @@ function renderRoster() {
 }
 $("#b-add").onclick = () => {
   if (roster.length >= ROSTER_MAX) return toast(`교수님은 ${ROSTER_MAX}명까지예요`)
-  const base = PRESETS[roster.length % PRESETS.length]
-  roster.push(sanitizeProf({ ...base, name: ["이OO", "정OO", "강OO", "윤OO", "한OO", "조OO"][roster.length % 6] }))
+  // 목록에 아직 없는 단과대의 기본 교수님부터 (기본 목록은 8명이라 9번째 기본 교수님은 여기서 들어온다)
+  const have = new Set(roster.map((p) => p.college)), fresh = PRESETS.find((p) => !have.has(p.college))
+  roster.push(sanitizeProf(fresh || { ...PRESETS[roster.length % PRESETS.length], name: ["조OO", "임OO", "신OO", "오OO"][roster.length % 4] }))
   saveRoster(); editProf(roster.length - 1)
 }
 

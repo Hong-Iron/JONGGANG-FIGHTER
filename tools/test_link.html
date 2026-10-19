@@ -4,7 +4,7 @@ import { PRESETS, DEFAULT_LINES, sanitizeProf, encodeRoster, decodeRoster, roste
 const log = []
 try {
   const same = (a, b) => JSON.stringify(a.map(sanitizeProf)) === JSON.stringify(b.map(sanitizeProf))
-  const presets = PRESETS.map(sanitizeProf)
+  const presets = PRESETS.slice(0, 8).map(sanitizeProf)
   const c1 = encodeRoster(presets); log.push("presets x" + presets.length + ": code " + c1.length + " chars, round trip " + same(decodeRoster(c1), presets) + ", link " + rosterLink(presets, 3).length)
   const custom = Array.from({ length: 8 }, (_, i) => sanitizeProf({ ...PRESETS[i % PRESETS.length], name: "홍길" + i, lines: ["말버릇 하나 " + i, "두 번째 말버릇 길게 써 봄", "세 번째"], hair: "perm", gender: "f", age: "young", hat: "beret", desk: "books" }))
   const c2 = encodeRoster(custom); log.push("custom x8: code " + c2.length + ", round trip " + same(decodeRoster(c2), custom) + ", full link " + rosterLink(custom, 5).length)

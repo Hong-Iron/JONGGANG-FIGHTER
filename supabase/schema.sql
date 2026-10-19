@@ -10,7 +10,7 @@ create table if not exists public.jg_college (
 );
 insert into public.jg_college (code, name, sort) values
   ('eng', '공과대학', 1), ('hum', '인문대학', 2), ('soc', '사회과학대학', 3), ('sci', '자연과학대학', 4), ('art', '예술대학', 5),
-  ('nur', '간호대학', 6), ('med', '의과대학', 7)
+  ('nur', '간호대학', 6), ('med', '의과대학', 7), ('law', '법과대학', 8), ('edu', '사범대학', 9)
 on conflict (code) do update set name = excluded.name, sort = excluded.sort;
 
 -- 날짜(한국 시간)별 단과대 합계: 쓰러뜨린 교수님 수, 그날 최고 연승, 도전한 판 수(첫 승을 거둔 도전)

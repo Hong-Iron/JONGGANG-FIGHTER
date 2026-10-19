@@ -1,8 +1,8 @@
-import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610191216"
+import { PARTS, PROF_PARTS, PROF_KEYS, allowedFor } from "./parts.js?v=202610200036"
 // 꾸미기 선택지, 기본값, 교수님 링크(URL ?b=) 만들기와 읽기.
 export const PROF_OPTS = PROF_PARTS                       // 묶음은 parts.js의 PROF_GROUPS
 // 단과대: [코드, 줄임말, 정식 이름]. 순위표 코드와 같다 (supabase/schema.sql의 jg_college)
-export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"], ["nur", "간호대", "간호대학"], ["med", "의대", "의과대학"]]
+export const COLLEGES = [["eng", "공대", "공과대학"], ["hum", "인문대", "인문대학"], ["soc", "사회대", "사회과학대학"], ["sci", "자연대", "자연과학대학"], ["art", "예대", "예술대학"], ["nur", "간호대", "간호대학"], ["med", "의대", "의과대학"], ["law", "법대", "법과대학"], ["edu", "사범대", "사범대학"]]
 export const STU_OPTS = PARTS                             // 묶음과 스탯은 parts.js
 // 카카오톡 공유: 카카오 앱 "종강 파이터"의 JavaScript 키 (공개 키, 사이트 도메인 https://hong-iron.github.io 등록)
 export const KAKAO_KEY = "de3c45d83caca2bbab2ec89f8fc967f2"
@@ -12,7 +12,7 @@ export const DEFAULT_PROF = {
   hair: "bald", hcolor: "gray", glasses: "half", hat: "none", outfit: "tweed", neck: "auto", pocket: "pens", hand: "laser", desk: "thinkpad",
 }
 // 교수님 부르는 이름: "인문대 박OO 교수"
-const CSHORT = { eng: "공대", hum: "인문대", soc: "사회대", sci: "자연대", art: "예대", nur: "간호대", med: "의대" }
+const CSHORT = { eng: "공대", hum: "인문대", soc: "사회대", sci: "자연대", art: "예대", nur: "간호대", med: "의대", law: "법대", edu: "사범대" }
 export const profTitle = (p) => `${CSHORT[p.college] || "공대"} ${p.name} 교수`
 export const DEFAULT_STU = {
   college: "", gender: "m", skin: "dry", eyeshape: "normal", eyes: "tired", dark: 3, red: "no", mouth: "none", hair: "greasy", hstate: "none",
@@ -60,7 +60,9 @@ export const PRESETS = [
   { name: "이OO", college: "hum", age: "senior", eyes: "droopy", lines: ["자네, 원문은 읽었나?", "그 해석은 틀렸네", "레포트는 30장이네"], glasses: "chain", hair: "side", outfit: "cardigan", hand: "chalk", desk: "thermos", face: "kind", beard: "full", body: "thin" },
   { name: "정OO", college: "sci", lines: ["오차가 너무 크군", "실험 다시 하게", "데이터가 말해 주지"], gender: "f", age: "middle", eyes: "big", glasses: "metal", hair: "perm", hcolor: "brown", outfit: "labcoat", hand: "pad", desk: "molecule", face: "tired", beard: "stubble" },
   { name: "윤OO", college: "nur", lines: ["활력징후 다시 재 와요", "인계는 5분 안에", "케이스 스터디 50장"], gender: "f", age: "middle", eyes: "sharp", glasses: "metal", hair: "updo", hcolor: "black", outfit: "cardigan", neck: "nametag", hand: "pad", desk: "thermos", face: "stone" },
-  { name: "강OO", college: "med", lines: ["그건 국시에 안 나오나?", "이건 그냥 외우게", "다음 주 땡시험이네"], age: "senior", eyes: "narrow", glasses: "chain", hair: "side", hcolor: "salt", outfit: "labcoat", neck: "bluetie", hand: "stick", desk: "books", face: "smirk" }
+  { name: "강OO", college: "med", lines: ["그건 국시에 안 나오나?", "이건 그냥 외우게", "다음 주 땡시험이네"], age: "senior", eyes: "narrow", glasses: "chain", hair: "side", hcolor: "salt", outfit: "labcoat", neck: "bluetie", hand: "stick", desk: "books", face: "smirk" },
+  { name: "서OO", college: "law", lines: ["판례를 외워 오게", "그건 학설일 뿐이야", "법은 문언부터 보지"], age: "senior", eyes: "sharp", glasses: "horn", hair: "back", hcolor: "salt", outfit: "suit", neck: "redtie", hand: "stick", desk: "books", face: "stone" },
+  { name: "한OO", college: "edu", lines: ["지도안 다시 써 오게", "판서는 깔끔하게", "교생 실습 때 보자"], gender: "f", age: "young", eyes: "big", glasses: "metal", hair: "ponytail", hcolor: "brown", outfit: "cardigan", neck: "scarf", hand: "chalk", desk: "thermos", face: "kind" }
 ]
 export const ROSTER_MAX = 8
 // 학점: 4분 30초 도전에서 이긴 교수님 수로 매긴다. 기준은 실력별 봇 시뮬레이션(tools/test_sim.html)에서 정했다
