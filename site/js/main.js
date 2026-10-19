@@ -1,13 +1,13 @@
 // 종강 파이터: 화면 전환, 교수님 목록, 연속 대전, 입력, 화면 배율.
-import { loadArtSource, buildArt } from "./art.js?v=202610191050"
-import { loadFonts, drawText, textImage } from "./text.js?v=202610191050"
-import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191050"
-import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191050"
-import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191050"
-import { makeCard } from "./card.js?v=202610191050"
-import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191050"
-import { lbWin, lbBoard } from "./lb.js?v=202610191050"
-import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191050"
+import { loadArtSource, buildArt } from "./art.js?v=202610191101"
+import { loadFonts, drawText, textImage } from "./text.js?v=202610191101"
+import { Battle, W, H, RUN_TIME, drawCeiling, setVibrate, buzzOnce, skillSet } from "./battle.js?v=202610191101"
+import { UP, rollChoices, upSummary, upStats } from "./upgrades.js?v=202610191101"
+import { unlock, sfx, setMuted, isMuted } from "./sfx.js?v=202610191101"
+import { makeCard } from "./card.js?v=202610191101"
+import { PART_GROUPS, PROF_GROUPS, allowedFor, WEAPON, SETS, statsOf } from "./parts.js?v=202610191101"
+import { lbWin, lbBoard } from "./lb.js?v=202610191101"
+import { COLLEGES, KAKAO_KEY, gameHome, profTitle, PROF_OPTS, STU_OPTS, DEFAULT_STU, PRESETS, ROSTER_MAX, sanitizeProf, sanitizeStu, sanitizeRoster, decodeProf, decodeRoster, decodeStreak, rosterLink, loadLocal, saveLocal, loadRecord, recordWin, recordRunEnd } from "./config.js?v=202610191101"
 
 const $ = (s) => document.querySelector(s)
 const cv = $("#game"), ctx = cv.getContext("2d")
@@ -562,7 +562,7 @@ function drawMenu(t) {
 function gcEvent(path) {
   try { const g = window.goatcounter; if (g && g.count) g.count({ path: "jg-" + path, title: "jonggang", event: true }) } catch { /* 브라우저가 막음 */ }
 }
-for (const [sel, ev] of [["#b-kakao", "share-kakao"], ["#b-share", "share-open"], ["#b-save", "share-save"], ["#b-link2", "share-link"], ["#b-link", "duel-link"], [".support.kakao", "support-kakaopay"], [".support.bmc", "support-bmc"], ["#b-board", "board-open"], ["#b-board2", "board-open"]])
+for (const [sel, ev] of [["#b-kakao", "share-kakao"], ["#b-share", "share-open"], ["#b-save", "share-save"], ["#b-link2", "share-link"], ["#b-link", "duel-link"], ["#s-result .support.kakao", "support-kakaopay"], ["#s-result .support.bmc", "support-bmc"], ["#b-kakaopay-title", "support-kakaopay-title"], ["#b-bmc-title", "support-bmc-title"], ["#b-board", "board-open"], ["#b-board2", "board-open"]])
   document.querySelector(sel)?.addEventListener("click", () => gcEvent(ev))
 if (linkRoster) {                                                         // count.js가 늦게 오면 잠깐 기다렸다 보낸다
   let tries = 0; const t = setInterval(() => { if (window.goatcounter?.count || ++tries > 20) { clearInterval(t); gcEvent("challenge-open") } }, 500)

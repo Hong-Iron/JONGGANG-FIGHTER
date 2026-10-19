@@ -23,8 +23,9 @@ try {
   w.__jg.battle.intro = 0; w.__jg.battle.finish("lose")
   for (let i = 0; i < 100 && w.__jg.screen !== "result"; i++) { w.__jg.battle?.update(0.05); await wait(20) }
   log.push("screen " + w.__jg.screen)
-  for (const sel of ["#b-save", "#b-link2", ".support.kakao", ".support.bmc", "#b-board2"]) { d.querySelector(sel).click(); await wait(150) }
+  for (const sel of ["#b-save", "#b-link2", "#s-result .support.kakao", "#s-result .support.bmc", "#b-board2"]) { d.querySelector(sel).click(); await wait(150) }
   w.__jg.show("roster"); d.getElementById("b-link").click(); await wait(100)
+  w.__jg.show("title"); for (const id of ["b-kakaopay-title", "b-bmc-title"]) { d.getElementById(id).click(); await wait(100) }
   log.push("events: " + calls.map((c) => c.path + (c.event ? "" : "(not event)")).join(", "))
   calls.length = 0
   w = await boot("index.html?r=" + encodeRoster([{ name: "홍OO" }]) + "&s=3"); await wait(1500)
