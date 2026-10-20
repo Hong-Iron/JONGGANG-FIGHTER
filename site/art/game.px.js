@@ -327,6 +327,26 @@ sprite("prof_arms", { w: 180, h: 236, outline: "K" }, (c) => {
     c.text(98, 9, "HR", "N")
     return
   }
+  if (col === "biz") {                                                   // 주가 전광판: 캔들 차트와 쏟아지는 지폐
+    c.rect(14, 0, 152, 40, "m"); c.rect(16, 2, 148, 36, "V")
+    for (let k = 0; k < 14; k++) { const up = (k * 7) % 3 !== 0, h = 6 + (k * 11) % 16, y0 = 30 - ((k * 5) % 14) - h; c.rect(20 + k * 10, y0, 5, h, up ? "N" : "U"); c.vline(22 + k * 10, y0 - 3, h + 6, up ? "N" : "U") }
+    for (const [bx, by] of [[10, 60], [150, 64], [30, 100], [140, 104], [20, 130], [156, 128]]) { c.rect(bx, by, 14, 7, "n"); c.rect(bx + 1, by + 1, 12, 5, "N"); c.rect(bx + 5, by + 2, 4, 3, "n") }
+    return
+  }
+  if (col === "phm") {                                                   // 약장 폭발: 양쪽 약장과 떠다니는 캡슐
+    for (const px of [2, 146]) {
+      c.rect(px, 10, 32, 130, "w"); c.rect(px + 2, 12, 28, 126, "v")
+      for (let r = 0; r < 5; r++) { c.rect(px + 2, 36 + r * 24, 28, 2, "w"); for (let k = 0; k < 4; k++) c.rect(px + 4 + k * 7, 26 + r * 24, 5, 10, ["X", "b", "Q", "^"][(k + r) % 4]) }
+    }
+    for (const [cx, cy] of [[50, 20], [124, 26], [40, 70], [136, 80], [60, 2], [112, 0]]) { c.poly([cx, cy + 6, cx + 6, cy, cx + 12, cy + 4, cx + 6, cy + 10], "U"); c.poly([cx + 3, cy + 3, cx + 6, cy, cx + 12, cy + 4, cx + 9, cy + 7], "X") }
+    return
+  }
+  if (col === "pe") {                                                    // 응원단 소환: 메가폰 둘, 응원 깃발, 각진 폼폼
+    for (const [px, dir] of [[4, 1], [176, -1]]) { c.poly([px, 60, px + dir * 20, 50, px + dir * 20, 86, px, 76], "U"); c.rect(dir > 0 ? px - 4 : px, 62, 4, 12, "K") }
+    c.rect(30, 4, 120, 22, "R"); c.rect(32, 6, 116, 18, "U"); c.text(60, 12, "FIGHTING", "X")
+    for (const [cx, cy, col2] of [[26, 100, "^"], [150, 100, "Z"], [44, 36, "Z"], [132, 36, "^"]]) c.poly([cx, cy - 10, cx + 4, cy - 3, cx + 11, cy - 4, cx + 6, cy + 2, cx + 9, cy + 10, cx, cy + 5, cx - 9, cy + 10, cx - 6, cy + 2, cx - 11, cy - 4, cx - 4, cy - 3], col2)
+    return
+  }
   if (col === "law") {                                                   // 법정 소환: 대리석 기둥 둘과 머리 위의 큰 저울
     for (const px of [6, 150]) {
       c.rect(px - 3, 20, 30, 6, "x"); c.rect(px, 26, 24, 110, "l"); for (const fx of [5, 11, 17]) c.vline(px + fx, 28, 106, "@"); c.rect(px - 3, 136, 30, 6, "x")
@@ -397,6 +417,17 @@ function emblemFront(c) {
   }
   else if (col === "edu") {                                               // 수업 종
     c.rect(x + 7, y - 2, 5, 4, "o"); c.poly([x + 5, y + 2, x + 14, y + 2, x + 19, y + 17, x, y + 17], "o"); c.rect(x - 1, y + 17, 21, 2, "o"); c.rect(x + 8, y + 19, 3, 3, "o"); c.vline(x + 7, y + 5, 9, "v")
+  }
+  else if (col === "biz") {                                               // 오르는 막대그래프와 화살표
+    c.rect(x, y + 12, 4, 8, "o"); c.rect(x + 6, y + 8, 4, 12, "o"); c.rect(x + 12, y + 3, 4, 17, "o"); c.rect(x - 2, y + 20, 22, 2, "o")
+    c.line(x - 1, y + 9, x + 17, y - 2, "o"); c.line(x - 1, y + 10, x + 17, y - 1, "o"); c.poly([x + 14, y - 3, x + 20, y - 4, x + 18, y + 2], "o")
+  }
+  else if (col === "phm") {                                               // 비스듬한 캡슐
+    c.poly([x - 1, y + 14, x + 10, y + 3, x + 19, y + 10, x + 8, y + 21], "o"); c.poly([x + 4, y + 9, x + 10, y + 3, x + 19, y + 10, x + 13, y + 16], "w"); c.line(x + 4, y + 9, x + 13, y + 16, "o")
+  }
+  else if (col === "pe") {                                                // 트로피
+    c.poly([x + 2, y, x + 17, y, x + 15, y + 9, x + 11, y + 12, x + 8, y + 12, x + 4, y + 9], "o"); c.rect(x + 8, y + 12, 3, 4, "o"); c.rect(x + 4, y + 16, 11, 3, "o"); c.rect(x + 2, y + 19, 15, 2, "o")
+    c.rect(x - 2, y + 1, 3, 6, "o"); c.rect(x + 18, y + 1, 3, 6, "o")
   }
   else if (col === "med") {                                               // 뱀 한 마리가 감긴 지팡이
     c.rect(x + 8, y - 2, 3, 24, "o")
@@ -491,6 +522,33 @@ function weapon(c, o, d, f, hv, kind) {
       bar(-2, 3, 2, "I"); bar(2, 32, 11, "n"); bar(2, 6, 11, "N"); bar(30, 32, 10, "p"); P([12, -4, 24, -4, 24, 4, 12, 4], "p"); D(14, -2, "K", 8, 1); D(14, 1, "K", 6, 1); break
     case "handbell":                                                    // 나무 손잡이, 금빛 종, 추
       bar(-2, 14, 1.8, "v"); P([14, -3, 14, 3, 28, 9, 28, -9], "o"); P([14, -3, 18, -4, 28, -9, 28, -6], "^"); bar(28, 30, 9.5, ">"); D(31, -1, "$", 2, 2); break
+    case "calc":                                                        // 검은 재무 계산기: 초록 화면과 버튼
+      bar(-2, 26, 6, "m"); bar(18, 25, 4.5, "V"); D(20, -2, "N", 3, 1); D(20, 1, "N", 4, 1)
+      for (let u = 0; u < 16; u += 4) for (const v of [-4, -1, 2]) D(u, v, u === 12 && v === 2 ? "O" : "x", 2, 2)
+      break
+    case "laptop":                                                      // 엑셀이 켜진 노트북
+      bar(-2, 30, 10, "@"); bar(2, 28, 8, "V"); for (let u = 4; u < 28; u += 4) bar(u, u + 0.5, 8, "n"); for (const v of [-4, 0, 4]) P([2, v, 28, v, 28, v + 0.4, 2, v + 0.4], "n"); D(6, -6, "N", 6, 2); break
+    case "cards":                                                       // 명함 뭉치 + 날아가는 세 장
+      bar(-2, 12, 4, "p"); bar(-2, 12, 0.5, "l")
+      for (const v of [-7, 0, 7]) P([18, v - 2, 30, v - 2.6, 30, v + 2.6, 18, v + 2], "p"); for (const v of [-7, 0, 7]) D(22, v, "K", 4, 1)
+      break
+    case "mortar":                                                      // 하얀 막자: 끝이 굵다
+      bar(-2, 28, 2, "x"); bar(28, 38, 4, "l"); bar(34, 38, 4.4, "x"); break
+    case "pillbox":                                                     // 일곱 칸 약통, 칸마다 뚜껑 색
+      bar(2, 34, 8, "p"); bar(-2, 3, 2, "I")
+      for (let k = 0; k < 7; k++) { const u = 4 + k * 4.4; P([u, -7, u + 3.6, -7, u + 3.6, 7, u, 7], ["U", "O", "^", "N", "Z", "~", "Q"][k]) }
+      break
+    case "capsule":                                                     // 두 색 캡슐(각진 육각형)
+      bar(-2, 4, 2, "I"); P([4, -5, 15, -5, 15, 5, 4, 5, 1, 0], "U"); P([15, -5, 24, -5, 27, 0, 24, 5, 15, 5], "X"); D(6, -3, "Q", 6, 1); break
+    case "whistle":                                                     // 끈에 달린 금속 호루라기
+      bar(-2, 12, 0.6, "R"); P([12, -3, 22, -3, 24, 1, 22, 5, 12, 5], "!"); bar(22, 28, 1.6, "!"); D(15, -1, "$", 3, 2); break
+    case "medball":                                                     // 각진 가죽 공(팔각형), 이음선
+      bar(-2, 10, 2, "I"); P([12, -6, 18, -11, 26, -11, 31, -6, 31, 6, 26, 11, 18, 11, 12, 6], "?"); P([12, -6, 18, -11, 22, -11, 15, 0], ">")
+      P([21, -11, 22, -11, 22, 11, 21, 11], "K"); P([12, -0.5, 31, -0.5, 31, 0.5, 12, 0.5], "K"); break
+    case "jumprope":                                                    // 빨간 손잡이 둘, 늘어진 줄
+      bar(-2, 8, 2.2, "R"); bar(48, 56, 2.2, "R")
+      for (let u = 8; u < 48; u += 4) { const v0 = 6 * Math.sin(((u - 8) / 40) * Math.PI), v1 = 6 * Math.sin(((u - 4) / 40) * Math.PI); P([u, v0 - 0.5, u + 4, v1 - 0.5, u + 4, v1 + 0.5, u, v0 + 0.5], "=") }
+      break
     case "anatomy":                                                     // 빨간 표지 원서, 흰 해골 그림
       bar(2, 32, 12, "7"); bar(2, 7, 12, "r"); bar(30, 32, 11, "p"); D(3, -6, "o", 2, 1); D(3, 6, "o", 2, 1)
       P([14, -5, 22, -5, 22, 1, 20, 4, 16, 4, 14, 1], "X"); D(16, -2, "K", 2, 2); D(19, -2, "K", 2, 2); D(17, 2, "K", 3, 1); bar(-2, 3, 2, "I"); break
@@ -539,7 +597,7 @@ const POSES = {
   overDown: { L: [[22, 219], [24, 202], [36, 187]], R: [[78, 219], [76, 202], [64, 187]], kb: [[30, 184], [1, 0], 42, 6], two: true },
 }
 // 무기 길이(u 최대). 두 손 자세에서 가운데를 맞추는 데 쓴다
-const WLEN = { solder: 47, wrench: 50, gpu: 46, dict: 30, pen: 52, law: 46, gavel: 40, chart: 58, pipette: 41, compass: 53, geohammer: 36, ruler: 64, stand: 54, shinai: 62, syringe: 52, ivpole: 58, clipboard: 40, scalpel: 44, stetho: 46, anatomy: 32, casebook: 30, seal: 36, scales: 50, eraser: 26, rollbook: 32, handbell: 32 }
+const WLEN = { solder: 47, wrench: 50, gpu: 46, dict: 30, pen: 52, law: 46, gavel: 40, chart: 58, pipette: 41, compass: 53, geohammer: 36, ruler: 64, stand: 54, shinai: 62, syringe: 52, ivpole: 58, clipboard: 40, scalpel: 44, stetho: 46, anatomy: 32, casebook: 30, seal: 36, scales: 50, eraser: 26, rollbook: 32, handbell: 32, calc: 26, laptop: 30, cards: 30, mortar: 38, pillbox: 34, capsule: 26, whistle: 28, medball: 30, jumprope: 56 }
 function heldItem(c, P) {
   const [o, d, len, half] = P.kb
   if (STU.weapon === "keyboard" || !WLEN[STU.weapon]) return keyboard(c, o, d, len, half)
@@ -581,6 +639,9 @@ function emblem(c, x, y, kind, col) {
   else if (kind === "nur") { c.poly([x, y + 6, x + 2, y + 4, x + 7, y + 4, x + 9, y + 2, x + 9, y + 4, x + 8, y + 8, x + 1, y + 8], col); c.poly([x + 3, y + 3, x + 4, y, x + 5, y + 3], "^") }   // 나이팅게일 램프
   else if (kind === "law") { c.vline(x + 4, y, 9, col); c.hline(x, y + 1, 9, col); c.poly([x - 1, y + 5, x + 1, y + 2, x + 3, y + 5], col); c.poly([x + 5, y + 5, x + 7, y + 2, x + 9, y + 5], col); c.hline(x + 2, y + 9, 5, col) }   // 저울
   else if (kind === "edu") { c.rect(x + 3, y, 3, 2, col); c.poly([x + 2, y + 2, x + 7, y + 2, x + 9, y + 8, x, y + 8], col); c.rect(x + 4, y + 8, 2, 2, col); c.hline(x + 3, y + 4, 2, "i") }   // 수업 종
+  else if (kind === "biz") { c.rect(x, y + 6, 2, 3, col); c.rect(x + 3, y + 4, 2, 5, col); c.rect(x + 6, y + 1, 2, 8, col); c.line(x, y + 4, x + 8, y - 1, col) }   // 오르는 막대그래프
+  else if (kind === "phm") { c.poly([x, y + 6, x + 5, y + 1, x + 9, y + 5, x + 4, y + 9], col); c.poly([x + 2, y + 4, x + 5, y + 1, x + 9, y + 5, x + 6, y + 8], "X") }   // 캡슐
+  else if (kind === "pe") { c.poly([x + 1, y, x + 8, y, x + 7, y + 4, x + 5, y + 5, x + 4, y + 5, x + 2, y + 4], col); c.rect(x + 4, y + 5, 2, 2, col); c.rect(x + 2, y + 7, 6, 2, col); c.px(x, y + 1, col); c.px(x + 9, y + 1, col) }   // 트로피
   else if (kind === "med") { c.vline(x + 4, y, 10, col); c.line(x + 1, y + 2, x + 8, y + 4, col); c.line(x + 8, y + 4, x + 1, y + 6, col); c.line(x + 1, y + 6, x + 8, y + 8, col); c.rect(x, y + 1, 2, 2, col) }        // 뱀 감긴 지팡이
   else { c.poly([x, y, x + 9, y, x + 9, y + 5, x + 4, y + 9, x, y + 5], col); c.rect(x + 3, y + 2, 3, 3, "i") }   // 대학 문장 (방패)
 }
@@ -829,6 +890,15 @@ ICO("ic_verdict", (c) => { c.poly([6, 6, 16, 2, 20, 10, 10, 14], "w"); c.poly([6
 ICO("ic_rollcall", (c) => { c.rect(5, 3, 18, 22, "n"); c.rect(8, 6, 13, 16, "p"); for (let k = 0; k < 4; k++) { c.hline(10, 9 + k * 4, 6, "K"); c.rect(18, 8 + k * 4, 2, 2, "R") } })
 ICO("ic_sticker", (c) => { c.poly([14, 3, 17, 10, 25, 10, 19, 15, 21, 23, 14, 18, 7, 23, 9, 15, 3, 10, 11, 10], "^"); c.poly([14, 3, 17, 10, 14, 12, 11, 10], "o"); c.rect(12, 12, 4, 2, "R") })
 ICO("ic_chalkstorm", (c) => { c.rect(1, 21, 26, 6, "G"); for (const [x, y] of [[3, 14], [10, 9], [17, 4], [7, 2], [19, 15]]) { c.poly([x, y + 6, x + 6, y, x + 8, y + 2, x + 2, y + 8], "X"); c.poly([x, y + 6, x + 2, y + 4, x + 4, y + 6, x + 2, y + 8], "c") } })
+ICO("ic_meeting", (c) => { c.rect(4, 13, 20, 5, "w"); c.rect(6, 18, 2, 6, "v"); c.rect(20, 18, 2, 6, "v"); for (const x of [3, 11, 19]) c.rect(x, 6, 6, 6, "B"); c.rect(9, 3, 10, 3, "U") })
+ICO("ic_compound", (c) => { c.rect(3, 22, 22, 2, "K"); for (let k = 0; k < 5; k++) c.rect(4 + k * 4, 21 - (k + 1) * (k + 1) / 1.6, 3, (k + 1) * (k + 1) / 1.6, "N"); c.rect(16, 3, 2, 2, "n"); c.line(16, 9, 22, 3, "n"); c.rect(21, 8, 2, 2, "n") })
+ICO("ic_ipo", (c) => { c.rect(3, 3, 22, 22, "V"); c.line(5, 21, 11, 15, "N"); c.line(11, 15, 15, 17, "N"); c.line(15, 17, 23, 5, "N"); c.poly([19, 5, 24, 4, 23, 9], "N") })
+ICO("ic_leaflet", (c) => { c.rect(6, 3, 16, 22, "X"); c.rect(6, 3, 16, 4, "U"); for (let y = 10; y < 23; y += 3) c.hline(8, y, 12 - (y % 4), "@") })
+ICO("ic_vitamin", (c) => { c.rect(9, 3, 10, 4, "X"); c.rect(7, 7, 14, 18, "O"); c.rect(9, 11, 10, 8, "X"); c.text(11, 12, "C", "O") })
+ICO("ic_pillrain", (c) => { for (const [x, y, col] of [[4, 4, "U"], [14, 8, "Z"], [8, 15, "^"], [18, 18, "N"]]) { c.poly([x, y + 4, x + 4, y, x + 8, y + 3, x + 4, y + 7], col); c.poly([x + 2, y + 2, x + 4, y, x + 8, y + 3, x + 6, y + 5], "X") } })
+ICO("ic_yellow", (c) => { c.rect(8, 3, 13, 20, "K"); c.rect(9, 4, 11, 18, "^"); c.poly([4, 22, 10, 16, 14, 20, 10, 25], "S") })
+ICO("ic_shake", (c) => { c.poly([8, 7, 20, 7, 18, 25, 10, 25], "x"); c.rect(9, 3, 10, 4, "Z"); c.poly([9, 14, 19, 14, 18, 25, 10, 25], "w") })
+ICO("ic_relay", (c) => { c.poly([4, 20, 20, 6, 24, 10, 8, 24], "^"); c.poly([4, 20, 20, 6, 21, 7, 5, 21], "o"); c.line(3, 4, 9, 4, "@"); c.line(2, 8, 8, 8, "@") })
 
 sprite("ic_can", { w: 28, h: 28 }, (c) => {
   c.rect(0, 0, 28, 28, "K"); c.rect(1, 1, 26, 26, "p")

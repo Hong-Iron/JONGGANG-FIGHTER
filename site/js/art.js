@@ -1,15 +1,15 @@
 // pxl 엔진을 브라우저에서 돌려 그림 원본(art/game.px.js)을 꾸미기 선택(OPT)대로 그린다.
-import { Project } from "../vendor/pxl/core/index.js?v=202610200036"
+import { Project } from "../vendor/pxl/core/index.js?v=202610201623"
 
 let SRC = ""
 export async function loadArtSource() {
-  SRC = await (await fetch("art/game.px.js?v=202610200036")).text()
+  SRC = await (await fetch("art/game.px.js?v=202610201623")).text()
 }
 
 const NAMES = [
   "room", "prof_idle", "prof_p2", "prof_ko", "prof_arms", "lectern", "stu_idle", "stu_windup", "stu_smash", "stu_follow", "stu_sweepA", "stu_sweepB", "stu_overUp", "stu_overDown", "grad",
   "cap_c", "cap_v", "cap_ctrl", "cap_blank", "aplus", "ic_wire", "ic_can", "ic_push",
-  "ic_postit", "ic_pen3", "ic_report", "ic_recorder", "ic_factcheck", "ic_petition", "ic_lamp", "ic_nitrogen", "ic_centrifuge", "ic_spray", "ic_metronome", "ic_canvas", "ic_bandage", "ic_nightshift", "ic_codeblue", "ic_anesthesia", "ic_rounds", "ic_surgery", "ic_objection", "ic_counsel", "ic_verdict", "ic_rollcall", "ic_sticker", "ic_chalkstorm",
+  "ic_postit", "ic_pen3", "ic_report", "ic_recorder", "ic_factcheck", "ic_petition", "ic_lamp", "ic_nitrogen", "ic_centrifuge", "ic_spray", "ic_metronome", "ic_canvas", "ic_bandage", "ic_nightshift", "ic_codeblue", "ic_anesthesia", "ic_rounds", "ic_surgery", "ic_objection", "ic_counsel", "ic_verdict", "ic_rollcall", "ic_sticker", "ic_chalkstorm", "ic_meeting", "ic_compound", "ic_ipo", "ic_leaflet", "ic_vitamin", "ic_pillrain", "ic_yellow", "ic_shake", "ic_relay",
 ]
 for (let lv = 1; lv <= 5; lv++) for (const m of ["idle", "hurt", "win"]) NAMES.push(`por_${lv}_${m}`)
 for (const p of ["rc", "drone", "penguin", "owl", "rat", "bust"]) NAMES.push(`pet_${p}_0`, `pet_${p}_1`)

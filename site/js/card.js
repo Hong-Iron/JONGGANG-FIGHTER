@@ -1,12 +1,12 @@
 // 결과 카드: 연속 대전 한 번의 결과를 180×225 픽셀 공문서로 그리고 6배로 키워 1080×1350 이미지로 만든다.
 // res.result: "lose"(쓰러짐) | "timeout"(도전 전체 4분 30초 초과) | "quit"(스스로 그만둠), res.run: { streak, defeated, time, last }
-import { gradeOf } from "./config.js?v=202610200036"
-import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610200036"
+import { gradeOf } from "./config.js?v=202610201623"
+import { drawText, drawFit, textImage, wrap } from "./text.js?v=202610201623"
 
 const K = "#1d1622", P = "#f4efe1", L = "#d3dbe9", R = "#c8353b", PL = "#3b4150", PD = "#22252e", X = "#ffffff", G = "#7d7466"
 
-const LAB = { eng: "제1공학관 지하 랩실", hum: "인문관 고문헌 열람실", soc: "사회관 설문 분석실", sci: "자연관 지하 실험실", art: "실기동 크리틱 룸", nur: "간호관 시뮬레이션 실습실", med: "의대 해부학 실습실", law: "법학관 모의법정", edu: "사범관 교생 연구실" }
-const STU_C = { eng: "공대생 ", hum: "인문대생 ", soc: "사회대생 ", sci: "자연대생 ", art: "예대생 ", nur: "간호대생 ", med: "의대생 ", law: "법대생 ", edu: "사범대생 " }
+const LAB = { eng: "제1공학관 지하 랩실", hum: "인문관 고문헌 열람실", soc: "사회관 설문 분석실", sci: "자연관 지하 실험실", art: "실기동 크리틱 룸", nur: "간호관 시뮬레이션 실습실", med: "의대 해부학 실습실", law: "법학관 모의법정", edu: "사범관 교생 연구실", biz: "경영관 케이스 스터디룸", phm: "약대 조제 실습실", pe: "체육관 지하 웨이트장" }
+const STU_C = { eng: "공대생 ", hum: "인문대생 ", soc: "사회대생 ", sci: "자연대생 ", art: "예대생 ", nur: "간호대생 ", med: "의대생 ", law: "법대생 ", edu: "사범대생 ", biz: "경영대생 ", phm: "약대생 ", pe: "체대생 " }
 // 학점별 공문: 제목, 도장, 판정 문장
 const VERDICT = {
   "A+": { title: "대학원 납치 통지서", stamp: "납치" }, A: { title: "우수 성적 통지서", stamp: "우수", say: "성적 A로 이수를 인정하고 장학금 심사에 올립니다." },
